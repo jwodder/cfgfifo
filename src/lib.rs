@@ -1,5 +1,7 @@
 use cfg_if::cfg_if;
+use std::path::Path;
 use strum::{Display, EnumIter, EnumString};
+use thiserror::Error;
 
 #[derive(
     Clone, Copy, Debug, Display, EnumIter, EnumString, Eq, Hash, Ord, PartialEq, PartialOrd,
@@ -65,6 +67,32 @@ impl Format {
         let ext = &*ext;
         Format::iter().find(|f| f.extensions().contains(&ext))
     }
+
+    pub fn identify<P: AsRef<Path>>(path: P) -> Result<Format, IdentifyError> {
+        let Some(ext) = path.as_ref().extension() else {
+            return Err(IdentifyError::NoExtension);
+        };
+        let Some(ext) = ext.to_str() else {
+            return Err(IdentifyError::NotUnicode);
+        };
+        match Format::from_extension(ext) {
+            Some(f) if f.is_enabled() => Ok(f),
+            Some(f) => Err(IdentifyError::NotEnabled(f)),
+            _ => Err(IdentifyError::Unknown(ext.to_owned())),
+        }
+    }
+}
+
+#[derive(Clone, Debug, Eq, Error, PartialEq)]
+pub enum IdentifyError {
+    #[error("file extension indicates {0}, support for which is not enabled")]
+    NotEnabled(Format),
+    #[error("unknown file extension: {0:?}")]
+    Unknown(String),
+    #[error("file extension is not valid Unicode")]
+    NotUnicode,
+    #[error("file does not have a file extension")]
+    NoExtension,
 }
 
 #[derive(Clone, Debug)]
@@ -103,6 +131,39 @@ mod tests {
         iter.any(move |v| v == value)
     }
 
+    #[rstest]
+    #[case("file.ini", "ini")]
+    #[case("file.xml", "xml")]
+    #[case("file.cfg", "cfg")]
+    #[case("file.jsn", "jsn")]
+    #[case("file.tml", "tml")]
+    fn identify_unknown(#[case] path: &str, #[case] ext: String) {
+        assert_eq!(Format::identify(path), Err(IdentifyError::Unknown(ext)));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn identify_not_unicode() {
+        use std::os::unix::ffi::OsStrExt;
+        let path = std::ffi::OsStr::from_bytes(b"file.js\xF6n");
+        assert_eq!(Format::identify(path), Err(IdentifyError::NotUnicode));
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn identify_not_unicode() {
+        use std::os::windows::ffi::OsStringExt;
+        let path = std::ffi::OsString::from_wide(&[
+            0x66, 0x69, 0x6C, 0x65, 0x2E, 0x6A, 0xDC00, 0x73, 0x6E,
+        ]);
+        assert_eq!(Format::identify(path), Err(IdentifyError::NotUnicode));
+    }
+
+    #[test]
+    fn identify_no_ext() {
+        assert_eq!(Format::identify("file"), Err(IdentifyError::NoExtension));
+    }
+
     mod json {
         use super::*;
 
@@ -138,6 +199,24 @@ mod tests {
         #[case(".JSON")]
         fn from_extension(#[case] ext: &str) {
             assert_eq!(Format::from_extension(ext).unwrap(), Format::Json);
+        }
+
+        #[cfg(feature = "json")]
+        #[rstest]
+        #[case("file.json")]
+        #[case("dir/file.JSON")]
+        #[case("/dir/file.Json")]
+        fn identify(#[case] path: &str) {
+            assert_eq!(Format::identify(path).unwrap(), Format::Json);
+        }
+
+        #[cfg(not(feature = "json"))]
+        #[test]
+        fn identify_not_enabled() {
+            assert_eq!(
+                Format::identify("file.json"),
+                Err(IdentifyError::NotEnabled(Format::Json))
+            );
         }
     }
 
@@ -176,6 +255,24 @@ mod tests {
         #[case(".TOML")]
         fn from_extension(#[case] ext: &str) {
             assert_eq!(Format::from_extension(ext).unwrap(), Format::Toml);
+        }
+
+        #[cfg(feature = "toml")]
+        #[rstest]
+        #[case("file.toml")]
+        #[case("dir/file.TOML")]
+        #[case("/dir/file.Toml")]
+        fn identify(#[case] path: &str) {
+            assert_eq!(Format::identify(path).unwrap(), Format::Toml);
+        }
+
+        #[cfg(not(feature = "toml"))]
+        #[test]
+        fn identify_not_enabled() {
+            assert_eq!(
+                Format::identify("file.toml"),
+                Err(IdentifyError::NotEnabled(Format::Toml))
+            );
         }
     }
 
@@ -218,6 +315,27 @@ mod tests {
         #[case(".YML")]
         fn from_extension(#[case] ext: &str) {
             assert_eq!(Format::from_extension(ext).unwrap(), Format::Yaml);
+        }
+
+        #[cfg(feature = "yaml")]
+        #[rstest]
+        #[case("file.yaml")]
+        #[case("dir/file.YAML")]
+        #[case("/dir/file.Yaml")]
+        #[case("file.yml")]
+        #[case("dir/file.YML")]
+        #[case("/dir/file.Yml")]
+        fn identify(#[case] path: &str) {
+            assert_eq!(Format::identify(path).unwrap(), Format::Yaml);
+        }
+
+        #[cfg(not(feature = "yaml"))]
+        #[test]
+        fn identify_not_enabled() {
+            assert_eq!(
+                Format::identify("file.yaml"),
+                Err(IdentifyError::NotEnabled(Format::Yaml))
+            );
         }
     }
 }

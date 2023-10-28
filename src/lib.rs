@@ -1,5 +1,4 @@
 use cfg_if::cfg_if;
-use strum::IntoEnumIterator;
 
 #[derive(
     Clone,
@@ -52,6 +51,10 @@ impl Format {
                 }
             }
         }
+    }
+
+    pub fn iter() -> FormatIter {
+        <Format as strum::IntoEnumIterator>::iter()
     }
 
     pub fn enabled() -> EnabledFormatIter {

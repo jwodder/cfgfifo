@@ -1,7 +1,18 @@
 use cfg_if::cfg_if;
+use strum::IntoEnumIterator;
 
 #[derive(
-    Clone, Copy, Debug, strum::Display, strum::EnumString, Eq, Hash, Ord, PartialEq, PartialOrd,
+    Clone,
+    Copy,
+    Debug,
+    strum::Display,
+    strum::EnumIter,
+    strum::EnumString,
+    Eq,
+    Hash,
+    Ord,
+    PartialEq,
+    PartialOrd,
 )]
 #[strum(ascii_case_insensitive, serialize_all = "lowercase")]
 pub enum Format {
@@ -43,6 +54,10 @@ impl Format {
         }
     }
 
+    pub fn enabled() -> EnabledFormatIter {
+        EnabledFormatIter::new()
+    }
+
     pub fn extensions(&self) -> &'static [&'static str] {
         match self {
             Format::Json => &["json"],
@@ -52,9 +67,40 @@ impl Format {
     }
 }
 
+#[derive(Clone, Debug)]
+pub struct EnabledFormatIter(FormatIter);
+
+impl EnabledFormatIter {
+    pub fn new() -> EnabledFormatIter {
+        EnabledFormatIter(Format::iter())
+    }
+}
+
+impl Default for EnabledFormatIter {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl Iterator for EnabledFormatIter {
+    type Item = Format;
+
+    fn next(&mut self) -> Option<Format> {
+        self.0.find(|f| f.is_enabled())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn in_iter<T, I>(value: T, mut iter: I) -> bool
+    where
+        T: Eq,
+        I: Iterator<Item = T>,
+    {
+        iter.any(move |v| v == value)
+    }
 
     mod json {
         use super::*;
@@ -67,18 +113,21 @@ mod tests {
             assert_eq!("json".parse::<Format>().unwrap(), f);
             assert_eq!("JSON".parse::<Format>().unwrap(), f);
             assert_eq!("Json".parse::<Format>().unwrap(), f);
+            assert!(in_iter(f, Format::iter()));
         }
 
         #[cfg(feature = "json")]
         #[test]
         fn enabled() {
             assert!(Format::Json.is_enabled());
+            assert!(in_iter(Format::Json, Format::enabled()));
         }
 
         #[cfg(not(feature = "json"))]
         #[test]
         fn not_enabled() {
             assert!(!Format::Json.is_enabled());
+            assert!(!in_iter(Format::Json, Format::enabled()));
         }
     }
 
@@ -93,18 +142,21 @@ mod tests {
             assert_eq!("toml".parse::<Format>().unwrap(), f);
             assert_eq!("TOML".parse::<Format>().unwrap(), f);
             assert_eq!("Toml".parse::<Format>().unwrap(), f);
+            assert!(in_iter(f, Format::iter()));
         }
 
         #[cfg(feature = "toml")]
         #[test]
         fn enabled() {
             assert!(Format::Toml.is_enabled());
+            assert!(in_iter(Format::Toml, Format::enabled()));
         }
 
         #[cfg(not(feature = "toml"))]
         #[test]
         fn not_enabled() {
             assert!(!Format::Toml.is_enabled());
+            assert!(!in_iter(Format::Toml, Format::enabled()));
         }
     }
 
@@ -119,18 +171,21 @@ mod tests {
             assert_eq!("yaml".parse::<Format>().unwrap(), f);
             assert_eq!("YAML".parse::<Format>().unwrap(), f);
             assert_eq!("Yaml".parse::<Format>().unwrap(), f);
+            assert!(in_iter(f, Format::iter()));
         }
 
         #[cfg(feature = "yaml")]
         #[test]
         fn enabled() {
             assert!(Format::Yaml.is_enabled());
+            assert!(in_iter(Format::Yaml, Format::enabled()));
         }
 
         #[cfg(not(feature = "yaml"))]
         #[test]
         fn not_enabled() {
             assert!(!Format::Yaml.is_enabled());
+            assert!(!in_iter(Format::Yaml, Format::enabled()));
         }
     }
 }

@@ -13,7 +13,6 @@ static JSON: &str = indoc! {r#"
     "float": 1.618,
     "boolean": true,
     "text": "This is test text.\nThis is a new line.\n\tThis is an indented line.\nThis is a snowman with a goat: ☃🐐.",
-    "unit": null,
     "none": null,
     "some": 17,
     "list": [

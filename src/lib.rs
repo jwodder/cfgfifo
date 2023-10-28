@@ -1,17 +1,8 @@
 use cfg_if::cfg_if;
+use strum::{Display, EnumIter, EnumString};
 
 #[derive(
-    Clone,
-    Copy,
-    Debug,
-    strum::Display,
-    strum::EnumIter,
-    strum::EnumString,
-    Eq,
-    Hash,
-    Ord,
-    PartialEq,
-    PartialOrd,
+    Clone, Copy, Debug, Display, EnumIter, EnumString, Eq, Hash, Ord, PartialEq, PartialOrd,
 )]
 #[strum(ascii_case_insensitive, serialize_all = "UPPERCASE")]
 pub enum Format {

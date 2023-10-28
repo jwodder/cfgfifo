@@ -1,0 +1,24 @@
+[package]
+name = "cfgurate"
+version = "0.1.0-dev"
+edition = "2021"
+rust-version = "1.65"
+description = "(De)serialize common configuration file formats based on file extension"
+authors = ["John Thorvald Wodder II <cfgurate@varonathe.org>"]
+repository = "https://github.com/jwodder/cfgurate"
+license = "MIT"
+keywords = []
+# See <https://crates.io/category_slugs> for a list of categories
+categories = []
+exclude = ["/.*"]
+
+[dependencies]
+cfg-if = "1.0.0"
+serde = "1.0.190"
+serde_json = { version = "1.0.107", optional = true }
+toml = { version = "0.8.6", optional = true }
+
+[features]
+all = ["json", "toml"]
+json = ["dep:serde_json"]
+toml = ["dep:toml"]

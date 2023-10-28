@@ -13,7 +13,7 @@ use cfg_if::cfg_if;
     PartialEq,
     PartialOrd,
 )]
-#[strum(ascii_case_insensitive, serialize_all = "lowercase")]
+#[strum(ascii_case_insensitive, serialize_all = "UPPERCASE")]
 pub enum Format {
     Json,
     Toml,
@@ -111,7 +111,7 @@ mod tests {
         #[test]
         fn basics() {
             let f = Format::Json;
-            assert_eq!(f.to_string(), "json");
+            assert_eq!(f.to_string(), "JSON");
             assert_eq!(f.extensions(), ["json"]);
             assert_eq!("json".parse::<Format>().unwrap(), f);
             assert_eq!("JSON".parse::<Format>().unwrap(), f);
@@ -140,7 +140,7 @@ mod tests {
         #[test]
         fn basics() {
             let f = Format::Toml;
-            assert_eq!(f.to_string(), "toml");
+            assert_eq!(f.to_string(), "TOML");
             assert_eq!(f.extensions(), ["toml"]);
             assert_eq!("toml".parse::<Format>().unwrap(), f);
             assert_eq!("TOML".parse::<Format>().unwrap(), f);
@@ -169,7 +169,7 @@ mod tests {
         #[test]
         fn basics() {
             let f = Format::Yaml;
-            assert_eq!(f.to_string(), "yaml");
+            assert_eq!(f.to_string(), "YAML");
             assert_eq!(f.extensions(), ["yaml", "yml"]);
             assert_eq!("yaml".parse::<Format>().unwrap(), f);
             assert_eq!("YAML".parse::<Format>().unwrap(), f);

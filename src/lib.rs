@@ -7,6 +7,7 @@ use cfg_if::cfg_if;
 pub enum Format {
     Json,
     Toml,
+    Yaml,
 }
 
 impl Format {
@@ -30,6 +31,15 @@ impl Format {
                     }
                 }
             }
+            Format::Yaml => {
+                cfg_if! {
+                    if #[cfg(feature = "yaml")] {
+                        true
+                    } else {
+                        false
+                    }
+                }
+            }
         }
     }
 
@@ -37,6 +47,7 @@ impl Format {
         match self {
             Format::Json => &["json"],
             Format::Toml => &["toml"],
+            Format::Yaml => &["yaml", "yml"],
         }
     }
 }
@@ -94,6 +105,32 @@ mod tests {
         #[test]
         fn not_enabled() {
             assert!(!Format::Toml.is_enabled());
+        }
+    }
+
+    mod yaml {
+        use super::*;
+
+        #[test]
+        fn basics() {
+            let f = Format::Yaml;
+            assert_eq!(f.to_string(), "yaml");
+            assert_eq!(f.extensions(), ["yaml", "yml"]);
+            assert_eq!("yaml".parse::<Format>().unwrap(), f);
+            assert_eq!("YAML".parse::<Format>().unwrap(), f);
+            assert_eq!("Yaml".parse::<Format>().unwrap(), f);
+        }
+
+        #[cfg(feature = "yaml")]
+        #[test]
+        fn enabled() {
+            assert!(Format::Yaml.is_enabled());
+        }
+
+        #[cfg(not(feature = "yaml"))]
+        #[test]
+        fn not_enabled() {
+            assert!(!Format::Yaml.is_enabled());
         }
     }
 }

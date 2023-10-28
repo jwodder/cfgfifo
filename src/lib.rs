@@ -68,6 +68,12 @@ impl Format {
             Format::Yaml => &["yaml", "yml"],
         }
     }
+
+    pub fn from_extension(ext: &str) -> Option<Format> {
+        let ext = ext.strip_prefix('.').unwrap_or(ext).to_ascii_lowercase();
+        let ext = &*ext;
+        Format::iter().find(|f| f.extensions().contains(&ext))
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -96,6 +102,7 @@ impl Iterator for EnabledFormatIter {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use rstest::rstest;
 
     fn in_iter<T, I>(value: T, mut iter: I) -> bool
     where
@@ -132,6 +139,15 @@ mod tests {
             assert!(!Format::Json.is_enabled());
             assert!(!in_iter(Format::Json, Format::enabled()));
         }
+
+        #[rstest]
+        #[case("json")]
+        #[case(".json")]
+        #[case("JSON")]
+        #[case(".JSON")]
+        fn from_extension(#[case] ext: &str) {
+            assert_eq!(Format::from_extension(ext).unwrap(), Format::Json);
+        }
     }
 
     mod toml {
@@ -161,6 +177,15 @@ mod tests {
             assert!(!Format::Toml.is_enabled());
             assert!(!in_iter(Format::Toml, Format::enabled()));
         }
+
+        #[rstest]
+        #[case("toml")]
+        #[case(".toml")]
+        #[case("TOML")]
+        #[case(".TOML")]
+        fn from_extension(#[case] ext: &str) {
+            assert_eq!(Format::from_extension(ext).unwrap(), Format::Toml);
+        }
     }
 
     mod yaml {
@@ -189,6 +214,19 @@ mod tests {
         fn not_enabled() {
             assert!(!Format::Yaml.is_enabled());
             assert!(!in_iter(Format::Yaml, Format::enabled()));
+        }
+
+        #[rstest]
+        #[case("yaml")]
+        #[case(".yaml")]
+        #[case("YAML")]
+        #[case(".YAML")]
+        #[case("yml")]
+        #[case(".yml")]
+        #[case("YML")]
+        #[case(".YML")]
+        fn from_extension(#[case] ext: &str) {
+            assert_eq!(Format::from_extension(ext).unwrap(), Format::Yaml);
         }
     }
 }

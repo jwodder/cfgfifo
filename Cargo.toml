@@ -25,3 +25,6 @@ all = ["json", "toml", "yaml"]
 json = ["dep:serde_json"]
 toml = ["dep:toml"]
 yaml = ["dep:serde_yaml"]
+
+[dev-dependencies]
+rstest = { version = "0.18.2", default-features = false }

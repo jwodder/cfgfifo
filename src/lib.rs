@@ -1,4 +1,5 @@
 use cfg_if::cfg_if;
+use serde::{de::DeserializeOwned, Serialize};
 use std::path::Path;
 use strum::{Display, EnumIter, EnumString};
 use thiserror::Error;
@@ -81,6 +82,72 @@ impl Format {
             _ => Err(IdentifyError::Unknown(ext.to_owned())),
         }
     }
+
+    #[allow(unused)]
+    pub fn serialize<T: Serialize>(&self, value: &T) -> Result<String, SerializeError> {
+        match self {
+            Format::Json => {
+                cfg_if! {
+                    if #[cfg(feature = "json")] {
+                        serde_json::to_string_pretty(value).map_err(Into::into)
+                    } else {
+                        Err(SerializeError::NotEnabled(*self))
+                    }
+                }
+            }
+            Format::Toml => {
+                cfg_if! {
+                    if #[cfg(feature = "toml")] {
+                        toml::to_string_pretty(value).map_err(Into::into)
+                    } else {
+                        Err(SerializeError::NotEnabled(*self))
+                    }
+                }
+            }
+            Format::Yaml => {
+                cfg_if! {
+                    if #[cfg(feature = "yaml")] {
+                        serde_yaml::to_string(value).map_err(Into::into)
+                    } else {
+                        Err(SerializeError::NotEnabled(*self))
+                    }
+                }
+            }
+        }
+    }
+
+    #[allow(unused)]
+    pub fn deserialize<T: DeserializeOwned>(&self, s: &str) -> Result<T, DeserializeError> {
+        match self {
+            Format::Json => {
+                cfg_if! {
+                    if #[cfg(feature = "json")] {
+                        serde_json::from_str(s).map_err(Into::into)
+                    } else {
+                        Err(DeserializeError::NotEnabled(*self))
+                    }
+                }
+            }
+            Format::Toml => {
+                cfg_if! {
+                    if #[cfg(feature = "toml")] {
+                        toml::from_str(s).map_err(Into::into)
+                    } else {
+                        Err(DeserializeError::NotEnabled(*self))
+                    }
+                }
+            }
+            Format::Yaml => {
+                cfg_if! {
+                    if #[cfg(feature = "yaml")] {
+                        serde_yaml::from_str(s).map_err(Into::into)
+                    } else {
+                        Err(DeserializeError::NotEnabled(*self))
+                    }
+                }
+            }
+        }
+    }
 }
 
 #[derive(Clone, Debug, Eq, Error, PartialEq)]
@@ -93,6 +160,38 @@ pub enum IdentifyError {
     NotUnicode,
     #[error("file does not have a file extension")]
     NoExtension,
+}
+
+#[derive(Debug, Error)]
+#[non_exhaustive]
+pub enum SerializeError {
+    #[error("serialization to {0} is not enabled")]
+    NotEnabled(Format),
+    #[cfg(feature = "json")]
+    #[error(transparent)]
+    Json(#[from] serde_json::Error),
+    #[cfg(feature = "toml")]
+    #[error(transparent)]
+    Toml(#[from] toml::ser::Error),
+    #[cfg(feature = "yaml")]
+    #[error(transparent)]
+    Yaml(#[from] serde_yaml::Error),
+}
+
+#[derive(Debug, Error)]
+#[non_exhaustive]
+pub enum DeserializeError {
+    #[error("deserialization from {0} is not enabled")]
+    NotEnabled(Format),
+    #[cfg(feature = "json")]
+    #[error(transparent)]
+    Json(#[from] serde_json::Error),
+    #[cfg(feature = "toml")]
+    #[error(transparent)]
+    Toml(#[from] toml::de::Error),
+    #[cfg(feature = "yaml")]
+    #[error(transparent)]
+    Yaml(#[from] serde_yaml::Error),
 }
 
 #[derive(Clone, Debug)]

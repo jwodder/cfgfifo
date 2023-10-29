@@ -48,6 +48,7 @@ impl Format {
     }
 
     pub fn iter() -> FormatIter {
+        // To avoid the need for users to import the trait
         <Format as strum::IntoEnumIterator>::iter()
     }
 
@@ -213,9 +214,22 @@ impl Iterator for EnabledFormatIter {
     type Item = Format;
 
     fn next(&mut self) -> Option<Format> {
-        self.0.find(|f| f.is_enabled())
+        self.0.find(Format::is_enabled)
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let (_, upper) = self.0.size_hint();
+        (0, upper)
     }
 }
+
+impl DoubleEndedIterator for EnabledFormatIter {
+    fn next_back(&mut self) -> Option<Format> {
+        self.0.rfind(Format::is_enabled)
+    }
+}
+
+impl std::iter::FusedIterator for EnabledFormatIter {}
 
 #[cfg(test)]
 mod tests {
@@ -282,6 +296,7 @@ mod tests {
         fn enabled() {
             assert!(Format::Json.is_enabled());
             assert!(in_iter(Format::Json, Format::enabled()));
+            assert!(in_iter(Format::Json, Format::enabled().rev()));
         }
 
         #[cfg(not(feature = "json"))]
@@ -289,6 +304,7 @@ mod tests {
         fn not_enabled() {
             assert!(!Format::Json.is_enabled());
             assert!(!in_iter(Format::Json, Format::enabled()));
+            assert!(!in_iter(Format::Json, Format::enabled().rev()));
         }
 
         #[rstest]
@@ -338,6 +354,7 @@ mod tests {
         fn enabled() {
             assert!(Format::Toml.is_enabled());
             assert!(in_iter(Format::Toml, Format::enabled()));
+            assert!(in_iter(Format::Toml, Format::enabled().rev()));
         }
 
         #[cfg(not(feature = "toml"))]
@@ -345,6 +362,7 @@ mod tests {
         fn not_enabled() {
             assert!(!Format::Toml.is_enabled());
             assert!(!in_iter(Format::Toml, Format::enabled()));
+            assert!(!in_iter(Format::Toml, Format::enabled().rev()));
         }
 
         #[rstest]
@@ -394,6 +412,7 @@ mod tests {
         fn enabled() {
             assert!(Format::Yaml.is_enabled());
             assert!(in_iter(Format::Yaml, Format::enabled()));
+            assert!(in_iter(Format::Yaml, Format::enabled().rev()));
         }
 
         #[cfg(not(feature = "yaml"))]
@@ -401,6 +420,7 @@ mod tests {
         fn not_enabled() {
             assert!(!Format::Yaml.is_enabled());
             assert!(!in_iter(Format::Yaml, Format::enabled()));
+            assert!(!in_iter(Format::Yaml, Format::enabled().rev()));
         }
 
         #[rstest]

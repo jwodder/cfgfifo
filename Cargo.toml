@@ -23,7 +23,6 @@ exclude = ["/.*"]
 
 [dependencies]
 anyhow = { version = "1.0.75", optional = true }
-cfg-if = "1.0.0"
 json5 = { version = "0.4.1", optional = true }
 ron = { version = "0.8.1", optional = true }
 serde = "1.0.190"
@@ -43,7 +42,6 @@ toml = ["dep:toml"]
 yaml = ["dep:serde_yaml"]
 
 [dev-dependencies]
-assert_matches = "1.5.0"
 indoc = "2.0.4"
 pretty_assertions = "1.4.0"
 rstest = { version = "0.18.2", default-features = false }

@@ -1,11 +1,9 @@
-#![allow(unused)]
+#![cfg(feature = "toml")]
 use crate::Config;
-use assert_matches::assert_matches;
-use cfg_if::cfg_if;
 use cfgurate::*;
 use indoc::indoc;
 use pretty_assertions::assert_eq;
-use std::io::{read_to_string, Read, Seek, Write};
+use std::io::{read_to_string, Seek, Write};
 use tempfile::{tempfile, Builder};
 
 static TOML: &str = indoc! {r#"
@@ -59,25 +57,13 @@ family_name = "McCharles"
 #[test]
 fn load_from_str() {
     let r = Format::Toml.load_from_str::<Config>(TOML);
-    cfg_if! {
-        if #[cfg(feature = "toml")] {
-            assert_eq!(r.unwrap(), Config::get());
-        } else {
-            assert_matches!(r, Err(DeserializeError::NotEnabled(Format::Toml)));
-        }
-    }
+    assert_eq!(r.unwrap(), Config::get());
 }
 
 #[test]
 fn dump_to_string() {
     let r = Format::Toml.dump_to_string(&Config::get());
-    cfg_if! {
-        if #[cfg(feature = "toml")] {
-            assert_eq!(r.unwrap(), TOML);
-        } else {
-            assert_matches!(r, Err(SerializeError::NotEnabled(Format::Toml)));
-        }
-    }
+    assert_eq!(r.unwrap(), TOML);
 }
 
 #[test]
@@ -87,31 +73,19 @@ fn load_from_reader() {
     file.flush().unwrap();
     file.rewind().unwrap();
     let r = Format::Toml.load_from_reader::<_, Config>(file);
-    cfg_if! {
-        if #[cfg(feature = "toml")] {
-            assert_eq!(r.unwrap(), Config::get());
-        } else {
-            assert_matches!(r, Err(DeserializeError::NotEnabled(Format::Toml)));
-        }
-    }
+    assert_eq!(r.unwrap(), Config::get());
 }
 
 #[test]
 fn dump_to_writer() {
     let mut file = tempfile().unwrap();
     let r = Format::Toml.dump_to_writer(&file, &Config::get());
-    cfg_if! {
-        if #[cfg(feature = "toml")] {
-            assert!(r.is_ok());
-            file.flush().unwrap();
-            file.rewind().unwrap();
-            let s = read_to_string(file).unwrap();
-            assert_eq!(s, TOML);
-            assert!(s.ends_with("\"\n"));
-        } else {
-            assert_matches!(r, Err(SerializeError::NotEnabled(Format::Toml)));
-        }
-    }
+    assert!(r.is_ok());
+    file.flush().unwrap();
+    file.rewind().unwrap();
+    let s = read_to_string(file).unwrap();
+    assert_eq!(s, TOML);
+    assert!(s.ends_with("\"\n"));
 }
 
 #[test]
@@ -121,29 +95,17 @@ fn load_from_file() {
     file.flush().unwrap();
     file.rewind().unwrap();
     let r = load::<Config, _>(file);
-    cfg_if! {
-        if #[cfg(feature = "toml")] {
-            assert_eq!(r.unwrap(), Config::get());
-        } else {
-            assert_matches!(r, Err(LoadError::Identify(IdentifyError::NotEnabled(Format::Toml))));
-        }
-    }
+    assert_eq!(r.unwrap(), Config::get());
 }
 
 #[test]
 fn dump_to_file() {
     let mut file = Builder::new().suffix(".toml").tempfile().unwrap();
     let r = dump(&Config::get(), &file);
-    cfg_if! {
-        if #[cfg(feature = "toml")] {
-            assert!(r.is_ok());
-            file.flush().unwrap();
-            file.rewind().unwrap();
-            let s = read_to_string(file).unwrap();
-            assert_eq!(s, TOML);
-            assert!(s.ends_with("\"\n"));
-        } else {
-            assert_matches!(r, Err(DumpError::Identify(IdentifyError::NotEnabled(Format::Toml))));
-        }
-    }
+    assert!(r.is_ok());
+    file.flush().unwrap();
+    file.rewind().unwrap();
+    let s = read_to_string(file).unwrap();
+    assert_eq!(s, TOML);
+    assert!(s.ends_with("\"\n"));
 }

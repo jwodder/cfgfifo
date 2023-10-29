@@ -80,7 +80,6 @@
 //! }
 //! ```
 
-use cfg_if::cfg_if;
 use serde::{de::DeserializeOwned, Serialize};
 use std::fs::File;
 use std::io;
@@ -91,11 +90,10 @@ use thiserror::Error;
 #[cfg(feature = "ron")]
 use ron::ser::PrettyConfig;
 
-/// An enum of the file formats supported by `cfgurate`.
+/// An enum of file formats supported by this build of `cfgurate`.
 ///
-/// All variants are always present, even if support for a given format was
-/// disabled at compile time.  To test whether support for a format is enabled,
-/// use the [Format::is_enabled] method.
+/// Each variant is only present if the corresponding Cargo feature of
+/// `cfgurate` was enabled at compile time.
 ///
 /// A Format can be [displayed][std::fmt::Display] as a string containing its
 /// name in all-uppercase, and a Format can be [parsed][std::str::FromStr] from
@@ -104,11 +102,14 @@ use ron::ser::PrettyConfig;
     Clone, Copy, Debug, Display, EnumIter, EnumString, Eq, Hash, Ord, PartialEq, PartialOrd,
 )]
 #[strum(ascii_case_insensitive, serialize_all = "UPPERCASE")]
+#[non_exhaustive]
 pub enum Format {
     /// The [JSON](https://www.json.org) format, (de)serialized with the
     /// [serde_json] crate.
     ///
     /// Serialization uses multiline/"pretty" format.
+    #[cfg(feature = "json")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "json")))]
     Json,
 
     /// The [JSON5](https://json5.org) format, deserialized with the [json5]
@@ -117,12 +118,16 @@ pub enum Format {
     /// Serialization uses multiline/"pretty" format, performed via serde_json,
     /// as json5's serialization (which also uses serde_json) is
     /// single-line/"non-pretty."
+    #[cfg(feature = "json5")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "json5")))]
     Json5,
 
     /// The [RON](https://github.com/ron-rs/ron) format, (de)serialized with
     /// the [ron] crate.
     ///
     /// Serialization uses multiline/"pretty" format.
+    #[cfg(feature = "ron")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "ron")))]
     Ron,
 
     /// The [TOML](https://toml.io) format, (de)serialized with the [toml]
@@ -130,57 +135,51 @@ pub enum Format {
     ///
     /// Serialization uses "pretty" format, in which arrays are serialized on
     /// multiple lines.
+    #[cfg(feature = "toml")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "toml")))]
     Toml,
 
     /// The [YAML](https://yaml.org) format, (de)serialized with the
     /// [serde_yaml] crate.
+    #[cfg(feature = "yaml")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "yaml")))]
     Yaml,
 }
 
 impl Format {
-    /// Returns true iff support for the format was enabled at compile time via
-    /// the relevant Cargo feature
-    pub fn is_enabled(&self) -> bool {
-        match self {
-            Format::Json => cfg!(feature = "json"),
-            Format::Json5 => cfg!(feature = "json5"),
-            Format::Ron => cfg!(feature = "ron"),
-            Format::Toml => cfg!(feature = "toml"),
-            Format::Yaml => cfg!(feature = "yaml"),
-        }
-    }
-
     /// Returns an iterator over all [Format] variants
     pub fn iter() -> FormatIter {
         // To avoid the need for users to import the trait
         <Format as strum::IntoEnumIterator>::iter()
     }
 
-    /// Returns an iterator over all [enabled][Format::is_enabled] [Format]
-    /// variants
-    pub fn enabled() -> EnabledFormatIter {
-        EnabledFormatIter::new()
-    }
-
     /// Returns an array of the recognized file extensions for the file format.
     ///
     /// File extensions are lowercase and do not start with a period.
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// use cfgurate::Format;
-    ///
-    /// assert_eq!(Format::Json.extensions(), &["json"]);
-    /// assert_eq!(Format::Yaml.extensions(), &["yaml", "yml"]);
-    /// ```
+    #[cfg_attr(all(feature = "json", feature = "yaml"), doc = concat!(
+        "# Example\n",
+        "\n",
+        "```\n",
+        "use cfgurate::Format;\n",
+        "\n",
+        "assert_eq!(Format::Json.extensions(), &[\"json\"]);\n",
+        "assert_eq!(Format::Yaml.extensions(), &[\"yaml\", \"yml\"]);\n",
+        "```\n",
+    ))]
     pub fn extensions(&self) -> &'static [&'static str] {
         match self {
+            #[cfg(feature = "json")]
             Format::Json => &["json"],
+            #[cfg(feature = "json5")]
             Format::Json5 => &["json5"],
+            #[cfg(feature = "ron")]
             Format::Ron => &["ron"],
+            #[cfg(feature = "toml")]
             Format::Toml => &["toml"],
+            #[cfg(feature = "yaml")]
             Format::Yaml => &["yaml", "yml"],
+            #[allow(unreachable_patterns)]
+            _ => unreachable!(),
         }
     }
 
@@ -189,16 +188,17 @@ impl Format {
     /// File extensions are matched case-insensitively and may optionally start
     /// with a period.  If the given file extension does not correspond to a
     /// known file format, `None` is returned.
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// use cfgurate::Format;
-    ///
-    /// assert_eq!(Format::from_extension(".json"), Some(Format::Json));
-    /// assert_eq!(Format::from_extension("YML"), Some(Format::Yaml));
-    /// assert_eq!(Format::from_extension("cfg"), None);
-    /// ```
+    #[cfg_attr(all(feature = "json", feature = "yaml"), doc = concat!(
+        "# Example\n",
+        "\n",
+        "```\n",
+        "use cfgurate::Format;\n",
+        "\n",
+        "assert_eq!(Format::from_extension(\".json\"), Some(Format::Json));\n",
+        "assert_eq!(Format::from_extension(\"YML\"), Some(Format::Yaml));\n",
+        "assert_eq!(Format::from_extension(\"cfg\"), None);\n",
+        "```\n",
+    ))]
     pub fn from_extension(ext: &str) -> Option<Format> {
         let ext = ext.strip_prefix('.').unwrap_or(ext).to_ascii_lowercase();
         let ext = &*ext;
@@ -206,9 +206,6 @@ impl Format {
     }
 
     /// Determine the [Format] of a file path based on its file extension.
-    ///
-    /// Only [enabled][Format::is_enabled] formats are supported by this
-    /// method.
     #[cfg_attr(all(feature = "json", feature = "ron"), doc = concat!(
         "# Example\n",
         "\n",
@@ -224,8 +221,8 @@ impl Format {
     /// # Errors
     ///
     /// Returns an error if the given file path does not have an extension, the
-    /// extension is not valid Unicode, the extension is unknown, or the
-    /// extension is for a disabled format.
+    /// extension is not valid Unicode, or the extension is unknown to this
+    /// build.
     pub fn identify<P: AsRef<Path>>(path: P) -> Result<Format, IdentifyError> {
         let Some(ext) = path.as_ref().extension() else {
             return Err(IdentifyError::NoExtension);
@@ -233,69 +230,32 @@ impl Format {
         let Some(ext) = ext.to_str() else {
             return Err(IdentifyError::NotUnicode);
         };
-        match Format::from_extension(ext) {
-            Some(f) if f.is_enabled() => Ok(f),
-            Some(f) => Err(IdentifyError::NotEnabled(f)),
-            _ => Err(IdentifyError::Unknown(ext.to_owned())),
-        }
+        Format::from_extension(ext).ok_or_else(|| IdentifyError::Unknown(ext.to_owned()))
     }
 
     /// Serialize a value to a string in this format
     ///
     /// # Errors
     ///
-    /// Returns an error if the format is not [enabled][Format::is_enabled] or
-    /// if the underlying serializer returns an error.
+    /// Returns an error if the underlying serializer returns an error.
     #[allow(unused)]
     pub fn dump_to_string<T: Serialize>(&self, value: &T) -> Result<String, SerializeError> {
         match self {
-            Format::Json => {
-                cfg_if! {
-                    if #[cfg(feature = "json")] {
-                        serde_json::to_string_pretty(value).map_err(Into::into)
-                    } else {
-                        Err(SerializeError::NotEnabled(*self))
-                    }
-                }
-            }
+            #[cfg(feature = "json")]
+            Format::Json => serde_json::to_string_pretty(value).map_err(Into::into),
+            #[cfg(feature = "json5")]
             Format::Json5 => {
-                cfg_if! {
-                    if #[cfg(feature = "json5")] {
-                        /// json5::to_string() just serializes as JSON, but
-                        /// non-prettily.
-                        serde_json::to_string_pretty(value).map_err(Into::into)
-                    } else {
-                        Err(SerializeError::NotEnabled(*self))
-                    }
-                }
+                /// json5::to_string() just serializes as JSON, but
+                /// non-prettily.
+                serde_json::to_string_pretty(value).map_err(Into::into)
             }
-            Format::Ron => {
-                cfg_if! {
-                    if #[cfg(feature = "ron")] {
-                        ron::ser::to_string_pretty(value, ron_config()).map_err(Into::into)
-                    } else {
-                        Err(SerializeError::NotEnabled(*self))
-                    }
-                }
-            }
-            Format::Toml => {
-                cfg_if! {
-                    if #[cfg(feature = "toml")] {
-                        toml::to_string_pretty(value).map_err(Into::into)
-                    } else {
-                        Err(SerializeError::NotEnabled(*self))
-                    }
-                }
-            }
-            Format::Yaml => {
-                cfg_if! {
-                    if #[cfg(feature = "yaml")] {
-                        serde_yaml::to_string(value).map_err(Into::into)
-                    } else {
-                        Err(SerializeError::NotEnabled(*self))
-                    }
-                }
-            }
+            #[cfg(feature = "ron")]
+            Format::Ron => ron::ser::to_string_pretty(value, ron_config()).map_err(Into::into),
+            #[cfg(feature = "toml")]
+            Format::Toml => toml::to_string_pretty(value).map_err(Into::into),
+            #[cfg(feature = "yaml")]
+            Format::Yaml => serde_yaml::to_string(value).map_err(Into::into),
+            _ => unreachable!(),
         }
     }
 
@@ -303,56 +263,21 @@ impl Format {
     ///
     /// # Errors
     ///
-    /// Returns an error if the format is not [enabled][Format::is_enabled] or
-    /// if the underlying deserializer returns an error.
+    /// Returns an error if the underlying deserializer returns an error.
     #[allow(unused)]
     pub fn load_from_str<T: DeserializeOwned>(&self, s: &str) -> Result<T, DeserializeError> {
         match self {
-            Format::Json => {
-                cfg_if! {
-                    if #[cfg(feature = "json")] {
-                        serde_json::from_str(s).map_err(Into::into)
-                    } else {
-                        Err(DeserializeError::NotEnabled(*self))
-                    }
-                }
-            }
-            Format::Json5 => {
-                cfg_if! {
-                    if #[cfg(feature = "json5")] {
-                        json5::from_str(s).map_err(Into::into)
-                    } else {
-                        Err(DeserializeError::NotEnabled(*self))
-                    }
-                }
-            }
-            Format::Ron => {
-                cfg_if! {
-                    if #[cfg(feature = "ron")] {
-                        ron::from_str(s).map_err(Into::into)
-                    } else {
-                        Err(DeserializeError::NotEnabled(*self))
-                    }
-                }
-            }
-            Format::Toml => {
-                cfg_if! {
-                    if #[cfg(feature = "toml")] {
-                        toml::from_str(s).map_err(Into::into)
-                    } else {
-                        Err(DeserializeError::NotEnabled(*self))
-                    }
-                }
-            }
-            Format::Yaml => {
-                cfg_if! {
-                    if #[cfg(feature = "yaml")] {
-                        serde_yaml::from_str(s).map_err(Into::into)
-                    } else {
-                        Err(DeserializeError::NotEnabled(*self))
-                    }
-                }
-            }
+            #[cfg(feature = "json")]
+            Format::Json => serde_json::from_str(s).map_err(Into::into),
+            #[cfg(feature = "json5")]
+            Format::Json5 => json5::from_str(s).map_err(Into::into),
+            #[cfg(feature = "ron")]
+            Format::Ron => ron::from_str(s).map_err(Into::into),
+            #[cfg(feature = "toml")]
+            Format::Toml => toml::from_str(s).map_err(Into::into),
+            #[cfg(feature = "yaml")]
+            Format::Yaml => serde_yaml::from_str(s).map_err(Into::into),
+            _ => unreachable!(),
         }
     }
 
@@ -364,8 +289,8 @@ impl Format {
     ///
     /// # Errors
     ///
-    /// Returns an error if the format is not [enabled][Format::is_enabled], if
-    /// an I/O error occurs, or if the underlying serializer returns an error.
+    /// Returns an error if an I/O error occurs or if the underlying serializer
+    /// returns an error.
     #[allow(unused)]
     pub fn dump_to_writer<W: io::Write, T: Serialize>(
         &self,
@@ -373,62 +298,36 @@ impl Format {
         value: &T,
     ) -> Result<(), SerializeError> {
         match self {
+            #[cfg(feature = "json")]
             Format::Json => {
-                cfg_if! {
-                    if #[cfg(feature = "json")] {
-                        serde_json::to_writer_pretty(&mut writer, value)?;
-                        writer.write_all(b"\n")?;
-                        Ok(())
-                    } else {
-                        Err(SerializeError::NotEnabled(*self))
-                    }
-                }
+                serde_json::to_writer_pretty(&mut writer, value)?;
+                writer.write_all(b"\n")?;
+                Ok(())
             }
+            #[cfg(feature = "json5")]
             Format::Json5 => {
-                cfg_if! {
-                    if #[cfg(feature = "json5")] {
-                        // Serialize as JSON, as that's what json5 does, except
-                        // the latter doesn't support serializing to a writer.
-                        serde_json::to_writer_pretty(&mut writer, value)?;
-                        writer.write_all(b"\n")?;
-                        Ok(())
-                    } else {
-                        Err(SerializeError::NotEnabled(*self))
-                    }
-                }
+                // Serialize as JSON, as that's what json5 does, except the
+                // latter doesn't support serializing to a writer.
+                serde_json::to_writer_pretty(&mut writer, value)?;
+                writer.write_all(b"\n")?;
+                Ok(())
             }
+            #[cfg(feature = "ron")]
             Format::Ron => {
-                cfg_if! {
-                    if #[cfg(feature = "ron")] {
-                        let mut ser = ron::Serializer::new(&mut writer, Some(ron_config()))?;
-                        value.serialize(&mut ser)?;
-                        writer.write_all(b"\n")?;
-                        Ok(())
-                    } else {
-                        Err(SerializeError::NotEnabled(*self))
-                    }
-                }
+                let mut ser = ron::Serializer::new(&mut writer, Some(ron_config()))?;
+                value.serialize(&mut ser)?;
+                writer.write_all(b"\n")?;
+                Ok(())
             }
+            #[cfg(feature = "toml")]
             Format::Toml => {
-                cfg_if! {
-                    if #[cfg(feature = "toml")] {
-                        let s = toml::to_string_pretty(value)?;
-                        writer.write_all(s.as_bytes())?;
-                        Ok(())
-                    } else {
-                        Err(SerializeError::NotEnabled(*self))
-                    }
-                }
+                let s = toml::to_string_pretty(value)?;
+                writer.write_all(s.as_bytes())?;
+                Ok(())
             }
-            Format::Yaml => {
-                cfg_if! {
-                    if #[cfg(feature = "yaml")] {
-                        serde_yaml::to_writer(writer, value).map_err(Into::into)
-                    } else {
-                        Err(SerializeError::NotEnabled(*self))
-                    }
-                }
-            }
+            #[cfg(feature = "yaml")]
+            Format::Yaml => serde_yaml::to_writer(writer, value).map_err(Into::into),
+            _ => unreachable!(),
         }
     }
 
@@ -436,63 +335,34 @@ impl Format {
     ///
     /// # Errors
     ///
-    /// Returns an error if the format is not [enabled][Format::is_enabled], if
-    /// an I/O error occurs, or if the underlying deserializer returns an
-    /// error.
+    /// Returns an error if an I/O error occurs or if the underlying
+    /// deserializer returns an error.
     #[allow(unused)]
     pub fn load_from_reader<R: io::Read, T: DeserializeOwned>(
         &self,
         mut reader: R,
     ) -> Result<T, DeserializeError> {
         match self {
-            Format::Json => {
-                cfg_if! {
-                    if #[cfg(feature = "json")] {
-                        serde_json::from_reader(reader).map_err(Into::into)
-                    } else {
-                        Err(DeserializeError::NotEnabled(*self))
-                    }
-                }
-            }
+            #[cfg(feature = "json")]
+            Format::Json => serde_json::from_reader(reader).map_err(Into::into),
+            #[cfg(feature = "json5")]
             Format::Json5 => {
-                cfg_if! {
-                    if #[cfg(feature = "json5")] {
-                        let s = io::read_to_string(reader)?;
-                        json5::from_str(&s).map_err(Into::into)
-                    } else {
-                        Err(DeserializeError::NotEnabled(*self))
-                    }
-                }
+                let s = io::read_to_string(reader)?;
+                json5::from_str(&s).map_err(Into::into)
             }
+            #[cfg(feature = "ron")]
             Format::Ron => {
-                cfg_if! {
-                    if #[cfg(feature = "ron")] {
-                        let s = io::read_to_string(reader)?;
-                        ron::from_str(&s).map_err(Into::into)
-                    } else {
-                        Err(DeserializeError::NotEnabled(*self))
-                    }
-                }
+                let s = io::read_to_string(reader)?;
+                ron::from_str(&s).map_err(Into::into)
             }
+            #[cfg(feature = "toml")]
             Format::Toml => {
-                cfg_if! {
-                    if #[cfg(feature = "toml")] {
-                        let s = io::read_to_string(reader)?;
-                        toml::from_str(&s).map_err(Into::into)
-                    } else {
-                        Err(DeserializeError::NotEnabled(*self))
-                    }
-                }
+                let s = io::read_to_string(reader)?;
+                toml::from_str(&s).map_err(Into::into)
             }
-            Format::Yaml => {
-                cfg_if! {
-                    if #[cfg(feature = "yaml")] {
-                        serde_yaml::from_reader(reader).map_err(Into::into)
-                    } else {
-                        Err(DeserializeError::NotEnabled(*self))
-                    }
-                }
-            }
+            #[cfg(feature = "yaml")]
+            Format::Yaml => serde_yaml::from_reader(reader).map_err(Into::into),
+            _ => unreachable!(),
         }
     }
 }
@@ -510,8 +380,8 @@ fn ron_config() -> PrettyConfig {
 /// # Errors
 ///
 /// Returns an error if the format cannot be determined from the file
-/// extension, if the format is not [enabled][Format::is_enabled], if an I/O
-/// error occurs, or if the underlying deserializer returns an error.
+/// extension, if an I/O error occurs, or if the underlying deserializer
+/// returns an error.
 pub fn load<T: DeserializeOwned, P: AsRef<Path>>(path: P) -> Result<T, LoadError> {
     let fmt = Format::identify(&path)?;
     let fp = File::open(path).map_err(LoadError::Open)?;
@@ -524,8 +394,8 @@ pub fn load<T: DeserializeOwned, P: AsRef<Path>>(path: P) -> Result<T, LoadError
 /// # Errors
 ///
 /// Returns an error if the format cannot be determined from the file
-/// extension, if the format is not [enabled][Format::is_enabled], if an I/O
-/// error occurs, or if the underlying serializer returns an error.
+/// extension, if an I/O error occurs, or if the underlying serializer returns
+/// an error.
 pub fn dump<T: Serialize, P: AsRef<Path>>(value: &T, path: P) -> Result<(), DumpError> {
     let fmt = Format::identify(&path)?;
     let fp = File::create(path).map_err(DumpError::Open)?;
@@ -535,15 +405,8 @@ pub fn dump<T: Serialize, P: AsRef<Path>>(value: &T, path: P) -> Result<(), Dump
 /// Error type returned by [Format::identify]
 #[derive(Clone, Debug, Eq, Error, PartialEq)]
 pub enum IdentifyError {
-    /// Returned if the file path's extension corresponded to a format that was
-    /// not [enabled][Format::is_enabled]
-    #[error("file extension indicates {0}, support for which is not enabled")]
-    NotEnabled(
-        /// The format in question
-        Format,
-    ),
-    /// Returned if the file path's extension did not correspond to a known
-    /// file format
+    /// Returned if the file path's extension did not correspond to a known &
+    /// enabled file format
     #[error("unknown file extension: {0:?}")]
     Unknown(
         /// The file extension (without leading period)
@@ -565,10 +428,6 @@ pub enum IdentifyError {
 #[derive(Debug, Error)]
 #[non_exhaustive]
 pub enum SerializeError {
-    /// Returned if the format in question is not [enabled][Format::is_enabled]
-    #[error("serialization to {0} is not enabled")]
-    NotEnabled(Format),
-
     /// Returned if an I/O error occurred while writing to a writer.
     ///
     /// Some serializers may catch & report such errors themselves.
@@ -608,10 +467,6 @@ pub enum SerializeError {
 #[derive(Debug, Error)]
 #[non_exhaustive]
 pub enum DeserializeError {
-    /// Returned if the format in question is not [enabled][Format::is_enabled]
-    #[error("deserialization from {0} is not enabled")]
-    NotEnabled(Format),
-
     /// Returned if an I/O error occurred while reading from a reader.
     ///
     /// Some deserializers may catch & report such errors themselves.
@@ -653,7 +508,7 @@ pub enum DeserializeError {
 #[derive(Debug, Error)]
 pub enum LoadError {
     /// Returned if the file format could not be identified from the file
-    /// extension or if the format was not [enabled][Format::is_enabled]
+    /// extension
     #[error("failed to identify file format")]
     Identify(#[from] IdentifyError),
 
@@ -670,7 +525,7 @@ pub enum LoadError {
 #[derive(Debug, Error)]
 pub enum DumpError {
     /// Returned if the file format could not be identified from the file
-    /// extension or if the format was not [enabled][Format::is_enabled]
+    /// extension
     #[error("failed to identify file format")]
     Identify(#[from] IdentifyError),
 
@@ -683,55 +538,10 @@ pub enum DumpError {
     Serialize(#[from] SerializeError),
 }
 
-/// An iterator over [enabled][Format::is_enabled] [Format] variants
-#[derive(Clone, Debug)]
-pub struct EnabledFormatIter(FormatIter);
-
-impl EnabledFormatIter {
-    pub fn new() -> EnabledFormatIter {
-        EnabledFormatIter(Format::iter())
-    }
-}
-
-impl Default for EnabledFormatIter {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl Iterator for EnabledFormatIter {
-    type Item = Format;
-
-    fn next(&mut self) -> Option<Format> {
-        self.0.find(Format::is_enabled)
-    }
-
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        let (_, upper) = self.0.size_hint();
-        (0, upper)
-    }
-}
-
-impl DoubleEndedIterator for EnabledFormatIter {
-    fn next_back(&mut self) -> Option<Format> {
-        self.0.rfind(Format::is_enabled)
-    }
-}
-
-impl std::iter::FusedIterator for EnabledFormatIter {}
-
 #[cfg(test)]
 mod tests {
     use super::*;
     use rstest::rstest;
-
-    fn in_iter<T, I>(value: T, mut iter: I) -> bool
-    where
-        T: Eq,
-        I: Iterator<Item = T>,
-    {
-        iter.any(move |v| v == value)
-    }
 
     #[rstest]
     #[case("file.ini", "ini")]
@@ -766,6 +576,7 @@ mod tests {
         assert_eq!(Format::identify("file"), Err(IdentifyError::NoExtension));
     }
 
+    #[cfg(feature = "json")]
     mod json {
         use super::*;
 
@@ -777,23 +588,7 @@ mod tests {
             assert_eq!("json".parse::<Format>().unwrap(), f);
             assert_eq!("JSON".parse::<Format>().unwrap(), f);
             assert_eq!("Json".parse::<Format>().unwrap(), f);
-            assert!(in_iter(f, Format::iter()));
-        }
-
-        #[cfg(feature = "json")]
-        #[test]
-        fn enabled() {
-            assert!(Format::Json.is_enabled());
-            assert!(in_iter(Format::Json, Format::enabled()));
-            assert!(in_iter(Format::Json, Format::enabled().rev()));
-        }
-
-        #[cfg(not(feature = "json"))]
-        #[test]
-        fn not_enabled() {
-            assert!(!Format::Json.is_enabled());
-            assert!(!in_iter(Format::Json, Format::enabled()));
-            assert!(!in_iter(Format::Json, Format::enabled().rev()));
+            assert!(Format::iter().any(|f2| f == f2));
         }
 
         #[rstest]
@@ -805,7 +600,6 @@ mod tests {
             assert_eq!(Format::from_extension(ext).unwrap(), Format::Json);
         }
 
-        #[cfg(feature = "json")]
         #[rstest]
         #[case("file.json")]
         #[case("dir/file.JSON")]
@@ -813,17 +607,27 @@ mod tests {
         fn identify(#[case] path: &str) {
             assert_eq!(Format::identify(path).unwrap(), Format::Json);
         }
+    }
 
-        #[cfg(not(feature = "json"))]
+    #[cfg(not(feature = "json"))]
+    mod not_json {
+        use super::*;
+
         #[test]
-        fn identify_not_enabled() {
+        fn not_variant() {
+            assert!(!Format::iter().any(|f| f.to_string() == "JSON"));
+        }
+
+        #[test]
+        fn identify() {
             assert_eq!(
                 Format::identify("file.json"),
-                Err(IdentifyError::NotEnabled(Format::Json))
+                Err(IdentifyError::Unknown(String::from("json")))
             );
         }
     }
 
+    #[cfg(feature = "json5")]
     mod json5 {
         use super::*;
 
@@ -835,23 +639,7 @@ mod tests {
             assert_eq!("json5".parse::<Format>().unwrap(), f);
             assert_eq!("JSON5".parse::<Format>().unwrap(), f);
             assert_eq!("Json5".parse::<Format>().unwrap(), f);
-            assert!(in_iter(f, Format::iter()));
-        }
-
-        #[cfg(feature = "json5")]
-        #[test]
-        fn enabled() {
-            assert!(Format::Json5.is_enabled());
-            assert!(in_iter(Format::Json5, Format::enabled()));
-            assert!(in_iter(Format::Json5, Format::enabled().rev()));
-        }
-
-        #[cfg(not(feature = "json5"))]
-        #[test]
-        fn not_enabled() {
-            assert!(!Format::Json5.is_enabled());
-            assert!(!in_iter(Format::Json5, Format::enabled()));
-            assert!(!in_iter(Format::Json5, Format::enabled().rev()));
+            assert!(Format::iter().any(|f2| f == f2));
         }
 
         #[rstest]
@@ -863,7 +651,6 @@ mod tests {
             assert_eq!(Format::from_extension(ext).unwrap(), Format::Json5);
         }
 
-        #[cfg(feature = "json5")]
         #[rstest]
         #[case("file.json5")]
         #[case("dir/file.JSON5")]
@@ -871,17 +658,27 @@ mod tests {
         fn identify(#[case] path: &str) {
             assert_eq!(Format::identify(path).unwrap(), Format::Json5);
         }
+    }
 
-        #[cfg(not(feature = "json5"))]
+    #[cfg(not(feature = "json5"))]
+    mod not_json5 {
+        use super::*;
+
         #[test]
-        fn identify_not_enabled() {
+        fn not_variant() {
+            assert!(!Format::iter().any(|f| f.to_string() == "JSON5"));
+        }
+
+        #[test]
+        fn identify() {
             assert_eq!(
                 Format::identify("file.json5"),
-                Err(IdentifyError::NotEnabled(Format::Json5))
+                Err(IdentifyError::Unknown(String::from("json5")))
             );
         }
     }
 
+    #[cfg(feature = "ron")]
     mod ron {
         use super::*;
 
@@ -893,23 +690,7 @@ mod tests {
             assert_eq!("ron".parse::<Format>().unwrap(), f);
             assert_eq!("RON".parse::<Format>().unwrap(), f);
             assert_eq!("Ron".parse::<Format>().unwrap(), f);
-            assert!(in_iter(f, Format::iter()));
-        }
-
-        #[cfg(feature = "ron")]
-        #[test]
-        fn enabled() {
-            assert!(Format::Ron.is_enabled());
-            assert!(in_iter(Format::Ron, Format::enabled()));
-            assert!(in_iter(Format::Ron, Format::enabled().rev()));
-        }
-
-        #[cfg(not(feature = "ron"))]
-        #[test]
-        fn not_enabled() {
-            assert!(!Format::Ron.is_enabled());
-            assert!(!in_iter(Format::Ron, Format::enabled()));
-            assert!(!in_iter(Format::Ron, Format::enabled().rev()));
+            assert!(Format::iter().any(|f2| f == f2));
         }
 
         #[rstest]
@@ -921,7 +702,6 @@ mod tests {
             assert_eq!(Format::from_extension(ext).unwrap(), Format::Ron);
         }
 
-        #[cfg(feature = "ron")]
         #[rstest]
         #[case("file.ron")]
         #[case("dir/file.RON")]
@@ -929,17 +709,27 @@ mod tests {
         fn identify(#[case] path: &str) {
             assert_eq!(Format::identify(path).unwrap(), Format::Ron);
         }
+    }
 
-        #[cfg(not(feature = "ron"))]
+    #[cfg(not(feature = "ron"))]
+    mod not_ron {
+        use super::*;
+
         #[test]
-        fn identify_not_enabled() {
+        fn not_variant() {
+            assert!(!Format::iter().any(|f| f.to_string() == "RON"));
+        }
+
+        #[test]
+        fn identify() {
             assert_eq!(
                 Format::identify("file.ron"),
-                Err(IdentifyError::NotEnabled(Format::Ron))
+                Err(IdentifyError::Unknown(String::from("ron")))
             );
         }
     }
 
+    #[cfg(feature = "toml")]
     mod toml {
         use super::*;
 
@@ -951,23 +741,7 @@ mod tests {
             assert_eq!("toml".parse::<Format>().unwrap(), f);
             assert_eq!("TOML".parse::<Format>().unwrap(), f);
             assert_eq!("Toml".parse::<Format>().unwrap(), f);
-            assert!(in_iter(f, Format::iter()));
-        }
-
-        #[cfg(feature = "toml")]
-        #[test]
-        fn enabled() {
-            assert!(Format::Toml.is_enabled());
-            assert!(in_iter(Format::Toml, Format::enabled()));
-            assert!(in_iter(Format::Toml, Format::enabled().rev()));
-        }
-
-        #[cfg(not(feature = "toml"))]
-        #[test]
-        fn not_enabled() {
-            assert!(!Format::Toml.is_enabled());
-            assert!(!in_iter(Format::Toml, Format::enabled()));
-            assert!(!in_iter(Format::Toml, Format::enabled().rev()));
+            assert!(Format::iter().any(|f2| f == f2));
         }
 
         #[rstest]
@@ -979,7 +753,6 @@ mod tests {
             assert_eq!(Format::from_extension(ext).unwrap(), Format::Toml);
         }
 
-        #[cfg(feature = "toml")]
         #[rstest]
         #[case("file.toml")]
         #[case("dir/file.TOML")]
@@ -987,17 +760,27 @@ mod tests {
         fn identify(#[case] path: &str) {
             assert_eq!(Format::identify(path).unwrap(), Format::Toml);
         }
+    }
 
-        #[cfg(not(feature = "toml"))]
+    #[cfg(not(feature = "toml"))]
+    mod not_toml {
+        use super::*;
+
         #[test]
-        fn identify_not_enabled() {
+        fn not_variant() {
+            assert!(!Format::iter().any(|f| f.to_string() == "TOML"));
+        }
+
+        #[test]
+        fn identify() {
             assert_eq!(
                 Format::identify("file.toml"),
-                Err(IdentifyError::NotEnabled(Format::Toml))
+                Err(IdentifyError::Unknown(String::from("toml")))
             );
         }
     }
 
+    #[cfg(feature = "yaml")]
     mod yaml {
         use super::*;
 
@@ -1009,23 +792,7 @@ mod tests {
             assert_eq!("yaml".parse::<Format>().unwrap(), f);
             assert_eq!("YAML".parse::<Format>().unwrap(), f);
             assert_eq!("Yaml".parse::<Format>().unwrap(), f);
-            assert!(in_iter(f, Format::iter()));
-        }
-
-        #[cfg(feature = "yaml")]
-        #[test]
-        fn enabled() {
-            assert!(Format::Yaml.is_enabled());
-            assert!(in_iter(Format::Yaml, Format::enabled()));
-            assert!(in_iter(Format::Yaml, Format::enabled().rev()));
-        }
-
-        #[cfg(not(feature = "yaml"))]
-        #[test]
-        fn not_enabled() {
-            assert!(!Format::Yaml.is_enabled());
-            assert!(!in_iter(Format::Yaml, Format::enabled()));
-            assert!(!in_iter(Format::Yaml, Format::enabled().rev()));
+            assert!(Format::iter().any(|f2| f == f2));
         }
 
         #[rstest]
@@ -1041,7 +808,6 @@ mod tests {
             assert_eq!(Format::from_extension(ext).unwrap(), Format::Yaml);
         }
 
-        #[cfg(feature = "yaml")]
         #[rstest]
         #[case("file.yaml")]
         #[case("dir/file.YAML")]
@@ -1052,13 +818,22 @@ mod tests {
         fn identify(#[case] path: &str) {
             assert_eq!(Format::identify(path).unwrap(), Format::Yaml);
         }
+    }
 
-        #[cfg(not(feature = "yaml"))]
+    #[cfg(not(feature = "yaml"))]
+    mod not_yaml {
+        use super::*;
+
         #[test]
-        fn identify_not_enabled() {
+        fn not_variant() {
+            assert!(!Format::iter().any(|f| f.to_string() == "YAML"));
+        }
+
+        #[test]
+        fn identify() {
             assert_eq!(
                 Format::identify("file.yaml"),
-                Err(IdentifyError::NotEnabled(Format::Yaml))
+                Err(IdentifyError::Unknown(String::from("yaml")))
             );
         }
     }

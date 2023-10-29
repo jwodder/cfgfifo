@@ -1,5 +1,6 @@
 use cfg_if::cfg_if;
 use serde::{de::DeserializeOwned, Serialize};
+use std::fs::File;
 use std::io;
 use std::path::Path;
 use strum::{Display, EnumIter, EnumString};
@@ -230,6 +231,18 @@ impl Format {
     }
 }
 
+pub fn load<T: DeserializeOwned, P: AsRef<Path>>(path: P) -> Result<T, LoadError> {
+    let fmt = Format::identify(&path)?;
+    let fp = File::open(path).map_err(LoadError::Open)?;
+    fmt.load_from_reader(fp).map_err(Into::into)
+}
+
+pub fn dump<T: Serialize, P: AsRef<Path>>(value: &T, path: P) -> Result<(), DumpError> {
+    let fmt = Format::identify(&path)?;
+    let fp = File::create(path).map_err(DumpError::Open)?;
+    fmt.dump_to_writer(fp, value).map_err(Into::into)
+}
+
 #[derive(Clone, Debug, Eq, Error, PartialEq)]
 pub enum IdentifyError {
     #[error("file extension indicates {0}, support for which is not enabled")]
@@ -276,6 +289,26 @@ pub enum DeserializeError {
     #[cfg(feature = "yaml")]
     #[error(transparent)]
     Yaml(#[from] serde_yaml::Error),
+}
+
+#[derive(Debug, Error)]
+pub enum LoadError {
+    #[error("failed to identify file format")]
+    Identify(#[from] IdentifyError),
+    #[error("failed to open file for reading")]
+    Open(#[source] io::Error),
+    #[error("failed to deserialize file contents")]
+    Deserialize(#[from] DeserializeError),
+}
+
+#[derive(Debug, Error)]
+pub enum DumpError {
+    #[error("failed to identify file format")]
+    Identify(#[from] IdentifyError),
+    #[error("failed to open file for writing")]
+    Open(#[source] io::Error),
+    #[error("failed to serialize structure")]
+    Serialize(#[from] SerializeError),
 }
 
 #[derive(Clone, Debug)]

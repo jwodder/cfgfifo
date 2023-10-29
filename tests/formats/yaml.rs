@@ -2,11 +2,11 @@
 use crate::Config;
 use assert_matches::assert_matches;
 use cfg_if::cfg_if;
-use cfgurate::{DeserializeError, Format, SerializeError};
+use cfgurate::*;
 use indoc::indoc;
 use pretty_assertions::assert_eq;
 use std::io::{read_to_string, Read, Seek, Write};
-use tempfile::tempfile;
+use tempfile::{tempfile, Builder};
 
 static YAML: &str = indoc! {r#"
 primitives:
@@ -98,6 +98,40 @@ fn dump_to_writer() {
             assert!(s.ends_with("McCharles\n"));
         } else {
             assert_matches!(r, Err(SerializeError::NotEnabled(Format::Yaml)));
+        }
+    }
+}
+
+#[test]
+fn load_from_file() {
+    let mut file = Builder::new().suffix(".yaml").tempfile().unwrap();
+    file.write_all(YAML.as_bytes()).unwrap();
+    file.flush().unwrap();
+    file.rewind().unwrap();
+    let r = load::<Config, _>(file);
+    cfg_if! {
+        if #[cfg(feature = "yaml")] {
+            assert_eq!(r.unwrap(), Config::get());
+        } else {
+            assert_matches!(r, Err(LoadError::Identify(IdentifyError::NotEnabled(Format::Yaml))));
+        }
+    }
+}
+
+#[test]
+fn dump_to_file() {
+    let mut file = Builder::new().suffix(".yaml").tempfile().unwrap();
+    let r = dump(&Config::get(), &file);
+    cfg_if! {
+        if #[cfg(feature = "yaml")] {
+            assert!(r.is_ok());
+            file.flush().unwrap();
+            file.rewind().unwrap();
+            let s = read_to_string(file).unwrap();
+            assert_eq!(s, YAML);
+            assert!(s.ends_with("McCharles\n"));
+        } else {
+            assert_matches!(r, Err(DumpError::Identify(IdentifyError::NotEnabled(Format::Yaml))));
         }
     }
 }

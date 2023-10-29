@@ -7,9 +7,18 @@ description = "(De)serialize common configuration file formats based on file ext
 authors = ["John Thorvald Wodder II <cfgurate@varonathe.org>"]
 repository = "https://github.com/jwodder/cfgurate"
 license = "MIT"
-keywords = []
-# See <https://crates.io/category_slugs> for a list of categories
-categories = []
+keywords = [
+    "configuration",
+    "data-serialization",
+    "file-formats",
+    "json",
+    "json5",
+    "ron",
+    "serde",
+    "toml",
+    "yaml",
+]
+categories = ["config", "encoding", "filesystem"]
 exclude = ["/.*"]
 
 [dependencies]

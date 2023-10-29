@@ -12,6 +12,7 @@ use thiserror::Error;
 #[strum(ascii_case_insensitive, serialize_all = "UPPERCASE")]
 pub enum Format {
     Json,
+    Ron,
     Toml,
     Yaml,
 }
@@ -22,6 +23,15 @@ impl Format {
             Format::Json => {
                 cfg_if! {
                     if #[cfg(feature = "json")] {
+                        true
+                    } else {
+                        false
+                    }
+                }
+            }
+            Format::Ron => {
+                cfg_if! {
+                    if #[cfg(feature = "ron")] {
                         true
                     } else {
                         false
@@ -61,6 +71,7 @@ impl Format {
     pub fn extensions(&self) -> &'static [&'static str] {
         match self {
             Format::Json => &["json"],
+            Format::Ron => &["ron"],
             Format::Toml => &["toml"],
             Format::Yaml => &["yaml", "yml"],
         }
@@ -98,6 +109,15 @@ impl Format {
                     }
                 }
             }
+            Format::Ron => {
+                cfg_if! {
+                    if #[cfg(feature = "ron")] {
+                        ron::ser::to_string_pretty(value, ron::ser::PrettyConfig::default()).map_err(Into::into)
+                    } else {
+                        Err(SerializeError::NotEnabled(*self))
+                    }
+                }
+            }
             Format::Toml => {
                 cfg_if! {
                     if #[cfg(feature = "toml")] {
@@ -126,6 +146,15 @@ impl Format {
                 cfg_if! {
                     if #[cfg(feature = "json")] {
                         serde_json::from_str(s).map_err(Into::into)
+                    } else {
+                        Err(DeserializeError::NotEnabled(*self))
+                    }
+                }
+            }
+            Format::Ron => {
+                cfg_if! {
+                    if #[cfg(feature = "ron")] {
+                        ron::from_str(s).map_err(Into::into)
                     } else {
                         Err(DeserializeError::NotEnabled(*self))
                     }
@@ -170,6 +199,18 @@ impl Format {
                     }
                 }
             }
+            Format::Ron => {
+                cfg_if! {
+                    if #[cfg(feature = "ron")] {
+                        let mut ser = ron::Serializer::new(&mut writer, Some(ron::ser::PrettyConfig::default()))?;
+                        value.serialize(&mut ser)?;
+                        writer.write_all(b"\n")?;
+                        Ok(())
+                    } else {
+                        Err(SerializeError::NotEnabled(*self))
+                    }
+                }
+            }
             Format::Toml => {
                 cfg_if! {
                     if #[cfg(feature = "toml")] {
@@ -203,6 +244,16 @@ impl Format {
                 cfg_if! {
                     if #[cfg(feature = "json")] {
                         serde_json::from_reader(reader).map_err(Into::into)
+                    } else {
+                        Err(DeserializeError::NotEnabled(*self))
+                    }
+                }
+            }
+            Format::Ron => {
+                cfg_if! {
+                    if #[cfg(feature = "ron")] {
+                        let s = io::read_to_string(reader)?;
+                        ron::from_str(&s).map_err(Into::into)
                     } else {
                         Err(DeserializeError::NotEnabled(*self))
                     }
@@ -265,6 +316,9 @@ pub enum SerializeError {
     #[cfg(feature = "json")]
     #[error(transparent)]
     Json(#[from] serde_json::Error),
+    #[cfg(feature = "ron")]
+    #[error(transparent)]
+    Ron(#[from] ron::error::Error),
     #[cfg(feature = "toml")]
     #[error(transparent)]
     Toml(#[from] toml::ser::Error),
@@ -283,6 +337,9 @@ pub enum DeserializeError {
     #[cfg(feature = "json")]
     #[error(transparent)]
     Json(#[from] serde_json::Error),
+    #[cfg(feature = "ron")]
+    #[error(transparent)]
+    Ron(#[from] ron::error::SpannedError),
     #[cfg(feature = "toml")]
     #[error(transparent)]
     Toml(#[from] toml::de::Error),
@@ -447,6 +504,64 @@ mod tests {
             assert_eq!(
                 Format::identify("file.json"),
                 Err(IdentifyError::NotEnabled(Format::Json))
+            );
+        }
+    }
+
+    mod ron {
+        use super::*;
+
+        #[test]
+        fn basics() {
+            let f = Format::Ron;
+            assert_eq!(f.to_string(), "RON");
+            assert_eq!(f.extensions(), ["ron"]);
+            assert_eq!("ron".parse::<Format>().unwrap(), f);
+            assert_eq!("RON".parse::<Format>().unwrap(), f);
+            assert_eq!("Ron".parse::<Format>().unwrap(), f);
+            assert!(in_iter(f, Format::iter()));
+        }
+
+        #[cfg(feature = "ron")]
+        #[test]
+        fn enabled() {
+            assert!(Format::Ron.is_enabled());
+            assert!(in_iter(Format::Ron, Format::enabled()));
+            assert!(in_iter(Format::Ron, Format::enabled().rev()));
+        }
+
+        #[cfg(not(feature = "ron"))]
+        #[test]
+        fn not_enabled() {
+            assert!(!Format::Ron.is_enabled());
+            assert!(!in_iter(Format::Ron, Format::enabled()));
+            assert!(!in_iter(Format::Ron, Format::enabled().rev()));
+        }
+
+        #[rstest]
+        #[case("ron")]
+        #[case(".ron")]
+        #[case("RON")]
+        #[case(".RON")]
+        fn from_extension(#[case] ext: &str) {
+            assert_eq!(Format::from_extension(ext).unwrap(), Format::Ron);
+        }
+
+        #[cfg(feature = "ron")]
+        #[rstest]
+        #[case("file.ron")]
+        #[case("dir/file.RON")]
+        #[case("/dir/file.Ron")]
+        fn identify(#[case] path: &str) {
+            assert_eq!(Format::identify(path).unwrap(), Format::Ron);
+        }
+
+        #[cfg(not(feature = "ron"))]
+        #[test]
+        fn identify_not_enabled() {
+            assert_eq!(
+                Format::identify("file.ron"),
+                Err(IdentifyError::NotEnabled(Format::Ron))
             );
         }
     }

@@ -1,11 +1,9 @@
-#![allow(unused)]
+#![cfg(feature = "ron")]
 use crate::RonConfig;
-use assert_matches::assert_matches;
-use cfg_if::cfg_if;
 use cfgurate::*;
 use indoc::indoc;
 use pretty_assertions::assert_eq;
-use std::io::{read_to_string, Read, Seek, Write};
+use std::io::{read_to_string, Seek, Write};
 use tempfile::{tempfile, Builder};
 
 static RON: &str = indoc! {r#"
@@ -59,25 +57,13 @@ static RON: &str = indoc! {r#"
 #[test]
 fn load_from_str() {
     let r = Format::Ron.load_from_str::<RonConfig>(RON);
-    cfg_if! {
-        if #[cfg(feature = "ron")] {
-            assert_eq!(r.unwrap(), RonConfig::get());
-        } else {
-            assert_matches!(r, Err(DeserializeError::NotEnabled(Format::Ron)));
-        }
-    }
+    assert_eq!(r.unwrap(), RonConfig::get());
 }
 
 #[test]
 fn dump_to_string() {
     let r = Format::Ron.dump_to_string(&RonConfig::get());
-    cfg_if! {
-        if #[cfg(feature = "ron")] {
-            assert_eq!(r.unwrap(), RON);
-        } else {
-            assert_matches!(r, Err(SerializeError::NotEnabled(Format::Ron)));
-        }
-    }
+    assert_eq!(r.unwrap(), RON);
 }
 
 #[test]
@@ -87,31 +73,19 @@ fn load_from_reader() {
     file.flush().unwrap();
     file.rewind().unwrap();
     let r = Format::Ron.load_from_reader::<_, RonConfig>(file);
-    cfg_if! {
-        if #[cfg(feature = "ron")] {
-            assert_eq!(r.unwrap(), RonConfig::get());
-        } else {
-            assert_matches!(r, Err(DeserializeError::NotEnabled(Format::Ron)));
-        }
-    }
+    assert_eq!(r.unwrap(), RonConfig::get());
 }
 
 #[test]
 fn dump_to_writer() {
     let mut file = tempfile().unwrap();
     let r = Format::Ron.dump_to_writer(&file, &RonConfig::get());
-    cfg_if! {
-        if #[cfg(feature = "ron")] {
-            assert!(r.is_ok());
-            file.flush().unwrap();
-            file.rewind().unwrap();
-            let s = read_to_string(file).unwrap();
-            assert_eq!(s, format!("{RON}\n"));
-            assert!(s.ends_with(")\n"));
-        } else {
-            assert_matches!(r, Err(SerializeError::NotEnabled(Format::Ron)));
-        }
-    }
+    assert!(r.is_ok());
+    file.flush().unwrap();
+    file.rewind().unwrap();
+    let s = read_to_string(file).unwrap();
+    assert_eq!(s, format!("{RON}\n"));
+    assert!(s.ends_with(")\n"));
 }
 
 #[test]
@@ -121,29 +95,17 @@ fn load_from_file() {
     file.flush().unwrap();
     file.rewind().unwrap();
     let r = load::<RonConfig, _>(file);
-    cfg_if! {
-        if #[cfg(feature = "ron")] {
-            assert_eq!(r.unwrap(), RonConfig::get());
-        } else {
-            assert_matches!(r, Err(LoadError::Identify(IdentifyError::NotEnabled(Format::Ron))));
-        }
-    }
+    assert_eq!(r.unwrap(), RonConfig::get());
 }
 
 #[test]
 fn dump_to_file() {
     let mut file = Builder::new().suffix(".ron").tempfile().unwrap();
     let r = dump(&RonConfig::get(), &file);
-    cfg_if! {
-        if #[cfg(feature = "ron")] {
-            assert!(r.is_ok());
-            file.flush().unwrap();
-            file.rewind().unwrap();
-            let s = read_to_string(file).unwrap();
-            assert_eq!(s, format!("{RON}\n"));
-            assert!(s.ends_with(")\n"));
-        } else {
-            assert_matches!(r, Err(DumpError::Identify(IdentifyError::NotEnabled(Format::Ron))));
-        }
-    }
+    assert!(r.is_ok());
+    file.flush().unwrap();
+    file.rewind().unwrap();
+    let s = read_to_string(file).unwrap();
+    assert_eq!(s, format!("{RON}\n"));
+    assert!(s.ends_with(")\n"));
 }

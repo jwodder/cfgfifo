@@ -1,3 +1,4 @@
+#![allow(unused)]
 mod formats;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;

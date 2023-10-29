@@ -209,18 +209,18 @@ impl Format {
     ///
     /// Only [enabled][Format::is_enabled] formats are supported by this
     /// method.
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// use cfgurate::Format;
-    ///
-    /// assert_eq!(Format::identify("path/to/file.json").unwrap(), Format::Json);
-    /// assert_eq!(Format::identify("path/to/file.RON").unwrap(), Format::Ron);
-    /// assert!(Format::identify("path/to/file.cfg").is_err());
-    /// assert!(Format::identify("path/to/file").is_err());
-    /// ```
-    ///
+    #[cfg_attr(all(feature = "json", feature = "ron"), doc = concat!(
+        "# Example\n",
+        "\n",
+        "```\n",
+        "use cfgurate::Format;\n",
+        "\n",
+        "assert_eq!(Format::identify(\"path/to/file.json\").unwrap(), Format::Json);\n",
+        "assert_eq!(Format::identify(\"path/to/file.RON\").unwrap(), Format::Ron);\n",
+        "assert!(Format::identify(\"path/to/file.cfg\").is_err());\n",
+        "assert!(Format::identify(\"path/to/file\").is_err());\n",
+        "```\n",
+    ))]
     /// # Errors
     ///
     /// Returns an error if the given file path does not have an extension, the

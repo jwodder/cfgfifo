@@ -53,3 +53,7 @@ tempfile = "3.8.1"
 [[example]]
 name = "appconfig"
 required-features = ["examples"]
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]

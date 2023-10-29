@@ -20,42 +20,10 @@ pub enum Format {
 impl Format {
     pub fn is_enabled(&self) -> bool {
         match self {
-            Format::Json => {
-                cfg_if! {
-                    if #[cfg(feature = "json")] {
-                        true
-                    } else {
-                        false
-                    }
-                }
-            }
-            Format::Ron => {
-                cfg_if! {
-                    if #[cfg(feature = "ron")] {
-                        true
-                    } else {
-                        false
-                    }
-                }
-            }
-            Format::Toml => {
-                cfg_if! {
-                    if #[cfg(feature = "toml")] {
-                        true
-                    } else {
-                        false
-                    }
-                }
-            }
-            Format::Yaml => {
-                cfg_if! {
-                    if #[cfg(feature = "yaml")] {
-                        true
-                    } else {
-                        false
-                    }
-                }
-            }
+            Format::Json => cfg!(feature = "json"),
+            Format::Ron => cfg!(feature = "ron"),
+            Format::Toml => cfg!(feature = "toml"),
+            Format::Yaml => cfg!(feature = "yaml"),
         }
     }
 

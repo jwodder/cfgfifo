@@ -43,7 +43,7 @@ people:
 "#};
 
 #[test]
-pub fn deserialize() {
+fn deserialize() {
     let r = Format::Yaml.deserialize::<Config>(YAML);
     cfg_if! {
         if #[cfg(feature = "yaml")] {
@@ -55,7 +55,7 @@ pub fn deserialize() {
 }
 
 #[test]
-pub fn serialize() {
+fn serialize() {
     let r = Format::Yaml.serialize(&Config::get());
     cfg_if! {
         if #[cfg(feature = "yaml")] {

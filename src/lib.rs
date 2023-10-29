@@ -6,6 +6,9 @@ use std::path::Path;
 use strum::{Display, EnumIter, EnumString};
 use thiserror::Error;
 
+#[cfg(feature = "ron")]
+use ron::ser::PrettyConfig;
+
 #[derive(
     Clone, Copy, Debug, Display, EnumIter, EnumString, Eq, Hash, Ord, PartialEq, PartialOrd,
 )]
@@ -94,7 +97,7 @@ impl Format {
             Format::Ron => {
                 cfg_if! {
                     if #[cfg(feature = "ron")] {
-                        ron::ser::to_string_pretty(value, ron::ser::PrettyConfig::default()).map_err(Into::into)
+                        ron::ser::to_string_pretty(value, ron_config()).map_err(Into::into)
                     } else {
                         Err(SerializeError::NotEnabled(*self))
                     }
@@ -206,7 +209,7 @@ impl Format {
             Format::Ron => {
                 cfg_if! {
                     if #[cfg(feature = "ron")] {
-                        let mut ser = ron::Serializer::new(&mut writer, Some(ron::ser::PrettyConfig::default()))?;
+                        let mut ser = ron::Serializer::new(&mut writer, Some(ron_config()))?;
                         value.serialize(&mut ser)?;
                         writer.write_all(b"\n")?;
                         Ok(())
@@ -294,6 +297,13 @@ impl Format {
             }
         }
     }
+}
+
+#[cfg(feature = "ron")]
+fn ron_config() -> PrettyConfig {
+    // The default PrettyConfig sets new_line to CR LF on Windows.  Let's not
+    // do that here.
+    PrettyConfig::default().new_line(String::from("\n"))
 }
 
 pub fn load<T: DeserializeOwned, P: AsRef<Path>>(path: P) -> Result<T, LoadError> {

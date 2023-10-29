@@ -14,6 +14,7 @@ exclude = ["/.*"]
 
 [dependencies]
 cfg-if = "1.0.0"
+json5 = { version = "0.4.1", optional = true }
 ron = { version = "0.8.1", optional = true }
 serde = "1.0.190"
 serde_json = { version = "1.0.107", optional = true }
@@ -23,8 +24,9 @@ thiserror = "1.0.50"
 toml = { version = "0.8.6", optional = true }
 
 [features]
-default = ["json", "ron", "toml", "yaml"]
+default = ["json", "json5", "ron", "toml", "yaml"]
 json = ["dep:serde_json"]
+json5 = ["dep:json5", "dep:serde_json"]
 ron = ["dep:ron"]
 toml = ["dep:toml"]
 yaml = ["dep:serde_yaml"]

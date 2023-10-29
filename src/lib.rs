@@ -12,6 +12,7 @@ use thiserror::Error;
 #[strum(ascii_case_insensitive, serialize_all = "UPPERCASE")]
 pub enum Format {
     Json,
+    Json5,
     Ron,
     Toml,
     Yaml,
@@ -21,6 +22,7 @@ impl Format {
     pub fn is_enabled(&self) -> bool {
         match self {
             Format::Json => cfg!(feature = "json"),
+            Format::Json5 => cfg!(feature = "json5"),
             Format::Ron => cfg!(feature = "ron"),
             Format::Toml => cfg!(feature = "toml"),
             Format::Yaml => cfg!(feature = "yaml"),
@@ -39,6 +41,7 @@ impl Format {
     pub fn extensions(&self) -> &'static [&'static str] {
         match self {
             Format::Json => &["json"],
+            Format::Json5 => &["json5"],
             Format::Ron => &["ron"],
             Format::Toml => &["toml"],
             Format::Yaml => &["yaml", "yml"],
@@ -71,6 +74,17 @@ impl Format {
             Format::Json => {
                 cfg_if! {
                     if #[cfg(feature = "json")] {
+                        serde_json::to_string_pretty(value).map_err(Into::into)
+                    } else {
+                        Err(SerializeError::NotEnabled(*self))
+                    }
+                }
+            }
+            Format::Json5 => {
+                cfg_if! {
+                    if #[cfg(feature = "json5")] {
+                        /// json5::to_string() just serializes as JSON, but
+                        /// non-prettily.
                         serde_json::to_string_pretty(value).map_err(Into::into)
                     } else {
                         Err(SerializeError::NotEnabled(*self))
@@ -114,6 +128,15 @@ impl Format {
                 cfg_if! {
                     if #[cfg(feature = "json")] {
                         serde_json::from_str(s).map_err(Into::into)
+                    } else {
+                        Err(DeserializeError::NotEnabled(*self))
+                    }
+                }
+            }
+            Format::Json5 => {
+                cfg_if! {
+                    if #[cfg(feature = "json5")] {
+                        json5::from_str(s).map_err(Into::into)
                     } else {
                         Err(DeserializeError::NotEnabled(*self))
                     }
@@ -167,6 +190,19 @@ impl Format {
                     }
                 }
             }
+            Format::Json5 => {
+                cfg_if! {
+                    if #[cfg(feature = "json5")] {
+                        // Serialize as JSON, as that's what json5 does, except
+                        // the latter doesn't support serializing to a writer.
+                        serde_json::to_writer_pretty(&mut writer, value)?;
+                        writer.write_all(b"\n")?;
+                        Ok(())
+                    } else {
+                        Err(SerializeError::NotEnabled(*self))
+                    }
+                }
+            }
             Format::Ron => {
                 cfg_if! {
                     if #[cfg(feature = "ron")] {
@@ -212,6 +248,16 @@ impl Format {
                 cfg_if! {
                     if #[cfg(feature = "json")] {
                         serde_json::from_reader(reader).map_err(Into::into)
+                    } else {
+                        Err(DeserializeError::NotEnabled(*self))
+                    }
+                }
+            }
+            Format::Json5 => {
+                cfg_if! {
+                    if #[cfg(feature = "json5")] {
+                        let s = io::read_to_string(reader)?;
+                        json5::from_str(&s).map_err(Into::into)
                     } else {
                         Err(DeserializeError::NotEnabled(*self))
                     }
@@ -281,7 +327,7 @@ pub enum SerializeError {
     NotEnabled(Format),
     #[error(transparent)]
     Io(#[from] io::Error),
-    #[cfg(feature = "json")]
+    #[cfg(any(feature = "json", feature = "json5"))]
     #[error(transparent)]
     Json(#[from] serde_json::Error),
     #[cfg(feature = "ron")]
@@ -305,6 +351,9 @@ pub enum DeserializeError {
     #[cfg(feature = "json")]
     #[error(transparent)]
     Json(#[from] serde_json::Error),
+    #[cfg(feature = "json5")]
+    #[error(transparent)]
+    Json5(#[from] json5::Error),
     #[cfg(feature = "ron")]
     #[error(transparent)]
     Ron(#[from] ron::error::SpannedError),
@@ -472,6 +521,64 @@ mod tests {
             assert_eq!(
                 Format::identify("file.json"),
                 Err(IdentifyError::NotEnabled(Format::Json))
+            );
+        }
+    }
+
+    mod json5 {
+        use super::*;
+
+        #[test]
+        fn basics() {
+            let f = Format::Json5;
+            assert_eq!(f.to_string(), "JSON5");
+            assert_eq!(f.extensions(), ["json5"]);
+            assert_eq!("json5".parse::<Format>().unwrap(), f);
+            assert_eq!("JSON5".parse::<Format>().unwrap(), f);
+            assert_eq!("Json5".parse::<Format>().unwrap(), f);
+            assert!(in_iter(f, Format::iter()));
+        }
+
+        #[cfg(feature = "json5")]
+        #[test]
+        fn enabled() {
+            assert!(Format::Json5.is_enabled());
+            assert!(in_iter(Format::Json5, Format::enabled()));
+            assert!(in_iter(Format::Json5, Format::enabled().rev()));
+        }
+
+        #[cfg(not(feature = "json5"))]
+        #[test]
+        fn not_enabled() {
+            assert!(!Format::Json5.is_enabled());
+            assert!(!in_iter(Format::Json5, Format::enabled()));
+            assert!(!in_iter(Format::Json5, Format::enabled().rev()));
+        }
+
+        #[rstest]
+        #[case("json5")]
+        #[case(".json5")]
+        #[case("JSON5")]
+        #[case(".JSON5")]
+        fn from_extension(#[case] ext: &str) {
+            assert_eq!(Format::from_extension(ext).unwrap(), Format::Json5);
+        }
+
+        #[cfg(feature = "json5")]
+        #[rstest]
+        #[case("file.json5")]
+        #[case("dir/file.JSON5")]
+        #[case("/dir/file.Json5")]
+        fn identify(#[case] path: &str) {
+            assert_eq!(Format::identify(path).unwrap(), Format::Json5);
+        }
+
+        #[cfg(not(feature = "json5"))]
+        #[test]
+        fn identify_not_enabled() {
+            assert_eq!(
+                Format::identify("file.json5"),
+                Err(IdentifyError::NotEnabled(Format::Json5))
             );
         }
     }

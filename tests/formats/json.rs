@@ -5,6 +5,8 @@ use cfg_if::cfg_if;
 use cfgurate::{DeserializeError, Format, SerializeError};
 use indoc::indoc;
 use pretty_assertions::assert_eq;
+use std::io::{read_to_string, Read, Seek, Write};
+use tempfile::tempfile;
 
 static JSON: &str = indoc! {r#"
 {
@@ -73,6 +75,40 @@ fn dump_to_string() {
     cfg_if! {
         if #[cfg(feature = "json")] {
             assert_eq!(r.unwrap(), JSON);
+        } else {
+            assert_matches!(r, Err(SerializeError::NotEnabled(Format::Json)));
+        }
+    }
+}
+
+#[test]
+fn load_from_reader() {
+    let mut file = tempfile().unwrap();
+    writeln!(file, "{JSON}").unwrap();
+    file.flush().unwrap();
+    file.rewind().unwrap();
+    let r = Format::Json.load_from_reader::<_, Config>(file);
+    cfg_if! {
+        if #[cfg(feature = "json")] {
+            assert_eq!(r.unwrap(), Config::get());
+        } else {
+            assert_matches!(r, Err(DeserializeError::NotEnabled(Format::Json)));
+        }
+    }
+}
+
+#[test]
+fn dump_to_writer() {
+    let mut file = tempfile().unwrap();
+    let r = Format::Json.dump_to_writer(&file, &Config::get());
+    cfg_if! {
+        if #[cfg(feature = "json")] {
+            assert!(r.is_ok());
+            file.flush().unwrap();
+            file.rewind().unwrap();
+            let s = read_to_string(file).unwrap();
+            assert_eq!(s, format!("{JSON}\n"));
+            assert!(s.ends_with("}\n"));
         } else {
             assert_matches!(r, Err(SerializeError::NotEnabled(Format::Json)));
         }

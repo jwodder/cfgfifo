@@ -33,3 +33,4 @@ indoc = "2.0.4"
 pretty_assertions = "1.4.0"
 rstest = { version = "0.18.2", default-features = false }
 serde = { version = "1.0.190", features = ["derive"] }
+tempfile = "3.8.1"

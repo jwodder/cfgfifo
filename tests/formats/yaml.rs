@@ -5,6 +5,8 @@ use cfg_if::cfg_if;
 use cfgurate::{DeserializeError, Format, SerializeError};
 use indoc::indoc;
 use pretty_assertions::assert_eq;
+use std::io::{read_to_string, Read, Seek, Write};
+use tempfile::tempfile;
 
 static YAML: &str = indoc! {r#"
 primitives:
@@ -60,6 +62,40 @@ fn dump_to_string() {
     cfg_if! {
         if #[cfg(feature = "yaml")] {
             assert_eq!(r.unwrap(), YAML);
+        } else {
+            assert_matches!(r, Err(SerializeError::NotEnabled(Format::Yaml)));
+        }
+    }
+}
+
+#[test]
+fn load_from_reader() {
+    let mut file = tempfile().unwrap();
+    file.write_all(YAML.as_bytes()).unwrap();
+    file.flush().unwrap();
+    file.rewind().unwrap();
+    let r = Format::Yaml.load_from_reader::<_, Config>(file);
+    cfg_if! {
+        if #[cfg(feature = "yaml")] {
+            assert_eq!(r.unwrap(), Config::get());
+        } else {
+            assert_matches!(r, Err(DeserializeError::NotEnabled(Format::Yaml)));
+        }
+    }
+}
+
+#[test]
+fn dump_to_writer() {
+    let mut file = tempfile().unwrap();
+    let r = Format::Yaml.dump_to_writer(&file, &Config::get());
+    cfg_if! {
+        if #[cfg(feature = "yaml")] {
+            assert!(r.is_ok());
+            file.flush().unwrap();
+            file.rewind().unwrap();
+            let s = read_to_string(file).unwrap();
+            assert_eq!(s, YAML);
+            assert!(s.ends_with("McCharles\n"));
         } else {
             assert_matches!(r, Err(SerializeError::NotEnabled(Format::Yaml)));
         }

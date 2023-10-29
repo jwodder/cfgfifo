@@ -1,5 +1,6 @@
 use cfg_if::cfg_if;
 use serde::{de::DeserializeOwned, Serialize};
+use std::io;
 use std::path::Path;
 use strum::{Display, EnumIter, EnumString};
 use thiserror::Error;
@@ -149,6 +150,84 @@ impl Format {
             }
         }
     }
+
+    #[allow(unused)]
+    pub fn dump_to_writer<W: io::Write, T: Serialize>(
+        &self,
+        mut writer: W,
+        value: &T,
+    ) -> Result<(), SerializeError> {
+        match self {
+            Format::Json => {
+                cfg_if! {
+                    if #[cfg(feature = "json")] {
+                        serde_json::to_writer_pretty(&mut writer, value)?;
+                        writer.write_all(b"\n")?;
+                        Ok(())
+                    } else {
+                        Err(SerializeError::NotEnabled(*self))
+                    }
+                }
+            }
+            Format::Toml => {
+                cfg_if! {
+                    if #[cfg(feature = "toml")] {
+                        let s = toml::to_string_pretty(value)?;
+                        writer.write_all(s.as_bytes())?;
+                        Ok(())
+                    } else {
+                        Err(SerializeError::NotEnabled(*self))
+                    }
+                }
+            }
+            Format::Yaml => {
+                cfg_if! {
+                    if #[cfg(feature = "yaml")] {
+                        serde_yaml::to_writer(writer, value).map_err(Into::into)
+                    } else {
+                        Err(SerializeError::NotEnabled(*self))
+                    }
+                }
+            }
+        }
+    }
+
+    #[allow(unused)]
+    pub fn load_from_reader<R: io::Read, T: DeserializeOwned>(
+        &self,
+        mut reader: R,
+    ) -> Result<T, DeserializeError> {
+        match self {
+            Format::Json => {
+                cfg_if! {
+                    if #[cfg(feature = "json")] {
+                        serde_json::from_reader(reader).map_err(Into::into)
+                    } else {
+                        Err(DeserializeError::NotEnabled(*self))
+                    }
+                }
+            }
+            Format::Toml => {
+                cfg_if! {
+                    if #[cfg(feature = "toml")] {
+                        let s = io::read_to_string(reader)?;
+                        toml::from_str(&s).map_err(Into::into)
+                    } else {
+                        Err(DeserializeError::NotEnabled(*self))
+                    }
+                }
+            }
+            Format::Yaml => {
+                cfg_if! {
+                    if #[cfg(feature = "yaml")] {
+                        serde_yaml::from_reader(reader).map_err(Into::into)
+                    } else {
+                        Err(DeserializeError::NotEnabled(*self))
+                    }
+                }
+            }
+        }
+    }
 }
 
 #[derive(Clone, Debug, Eq, Error, PartialEq)]
@@ -168,6 +247,8 @@ pub enum IdentifyError {
 pub enum SerializeError {
     #[error("serialization to {0} is not enabled")]
     NotEnabled(Format),
+    #[error(transparent)]
+    Io(#[from] io::Error),
     #[cfg(feature = "json")]
     #[error(transparent)]
     Json(#[from] serde_json::Error),
@@ -184,6 +265,8 @@ pub enum SerializeError {
 pub enum DeserializeError {
     #[error("deserialization from {0} is not enabled")]
     NotEnabled(Format),
+    #[error(transparent)]
+    Io(#[from] io::Error),
     #[cfg(feature = "json")]
     #[error(transparent)]
     Json(#[from] serde_json::Error),

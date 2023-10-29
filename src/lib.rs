@@ -147,7 +147,7 @@ pub enum Format {
 }
 
 impl Format {
-    /// Returns an iterator over all [Format] variants
+    /// Returns an iterator over all [`Format`] variants
     pub fn iter() -> FormatIter {
         // To avoid the need for users to import the trait
         <Format as strum::IntoEnumIterator>::iter()
@@ -183,7 +183,29 @@ impl Format {
         }
     }
 
-    /// Converts a file extension to the corresponding [Format]
+    /// Test whether a file extension is associated with the format
+    ///
+    /// The file extension is matched case-insensitively may optionally start
+    /// with a period.
+    #[cfg_attr(feature = "json", doc = concat!(
+        "# Example\n",
+        "\n",
+        "```\n",
+        "use cfgurate::Format;\n",
+        "\n",
+        "assert!(Format::Json.has_extension(\".json\"));\n",
+        "assert!(Format::Json.has_extension(\"JSON\"));\n",
+        "assert!(!Format::Json.has_extension(\"cfg\"));\n",
+        "```\n",
+    ))]
+    pub fn has_extension(&self, ext: &str) -> bool {
+        let ext = ext.strip_prefix('.').unwrap_or(ext);
+        self.extensions()
+            .iter()
+            .any(|x| x.eq_ignore_ascii_case(ext))
+    }
+
+    /// Converts a file extension to the corresponding [`Format`]
     ///
     /// File extensions are matched case-insensitively and may optionally start
     /// with a period.  If the given file extension does not correspond to a
@@ -200,12 +222,10 @@ impl Format {
         "```\n",
     ))]
     pub fn from_extension(ext: &str) -> Option<Format> {
-        let ext = ext.strip_prefix('.').unwrap_or(ext).to_ascii_lowercase();
-        let ext = &*ext;
-        Format::iter().find(|f| f.extensions().contains(&ext))
+        Format::iter().find(|f| f.has_extension(ext))
     }
 
-    /// Determine the [Format] of a file path based on its file extension.
+    /// Determine the [`Format`] of a file path based on its file extension.
     #[cfg_attr(all(feature = "json", feature = "ron"), doc = concat!(
         "# Example\n",
         "\n",
@@ -224,12 +244,7 @@ impl Format {
     /// extension is not valid Unicode, or the extension is unknown to this
     /// build.
     pub fn identify<P: AsRef<Path>>(path: P) -> Result<Format, IdentifyError> {
-        let Some(ext) = path.as_ref().extension() else {
-            return Err(IdentifyError::NoExtension);
-        };
-        let Some(ext) = ext.to_str() else {
-            return Err(IdentifyError::NotUnicode);
-        };
+        let ext = get_ext(path.as_ref())?;
         Format::from_extension(ext).ok_or_else(|| IdentifyError::Unknown(ext.to_owned()))
     }
 
@@ -367,13 +382,6 @@ impl Format {
     }
 }
 
-#[cfg(feature = "ron")]
-fn ron_config() -> PrettyConfig {
-    // The default PrettyConfig sets new_line to CR LF on Windows.  Let's not
-    // do that here.
-    PrettyConfig::default().new_line(String::from("\n"))
-}
-
 /// Deserialize the contents of the given file, with the format automatically
 /// determined based on the file's extension.
 ///
@@ -383,9 +391,7 @@ fn ron_config() -> PrettyConfig {
 /// extension, if an I/O error occurs, or if the underlying deserializer
 /// returns an error.
 pub fn load<T: DeserializeOwned, P: AsRef<Path>>(path: P) -> Result<T, LoadError> {
-    let fmt = Format::identify(&path)?;
-    let fp = File::open(path).map_err(LoadError::Open)?;
-    fmt.load_from_reader(fp).map_err(Into::into)
+    Cfgurate::default().load(path)
 }
 
 /// Serialize a value to the given file, with the format automatically
@@ -397,12 +403,129 @@ pub fn load<T: DeserializeOwned, P: AsRef<Path>>(path: P) -> Result<T, LoadError
 /// extension, if an I/O error occurs, or if the underlying serializer returns
 /// an error.
 pub fn dump<T: Serialize, P: AsRef<Path>>(value: &T, path: P) -> Result<(), DumpError> {
-    let fmt = Format::identify(&path)?;
-    let fp = File::create(path).map_err(DumpError::Open)?;
-    fmt.dump_to_writer(fp, value).map_err(Into::into)
+    Cfgurate::default().dump(value, path)
 }
 
-/// Error type returned by [Format::identify]
+/// A configurable loader & dumper of serialized data in files.
+///
+/// By default, a `Cfgurate` instance's [`identify()`][Cfgurate::identify],
+/// [`load()`][Cfgurate::load], and [`dump()`][Cfgurate::dump] methods act the
+/// same as [`Format::identify()`], [`load()`], and [`dump()`], but the
+/// instance can be customized to only support a subset of enabled [`Format`]s
+/// and/or to use a given fallback [`Format`] if identifying a file's format
+/// fails.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct Cfgurate {
+    formats: Vec<Format>,
+    fallback: Option<Format>,
+}
+
+impl Cfgurate {
+    /// Create a new Cfgurate instance
+    pub fn new() -> Cfgurate {
+        Cfgurate {
+            formats: Format::iter().collect(),
+            fallback: None,
+        }
+    }
+
+    /// Set the [`Format`]s to support.
+    ///
+    /// By default, all enabled formats are selected.
+    ///
+    /// This is useful if you want to always restrict loading & dumping to a
+    /// certain set of formats even if more formats become enabled via [feature
+    /// unification].
+    ///
+    /// [feature unification]: https://doc.rust-lang.org/cargo/reference/features.html#feature-unification
+    pub fn formats<I: IntoIterator<Item = Format>>(mut self, iter: I) -> Self {
+        self.formats = iter.into_iter().collect();
+        self
+    }
+
+    /// Set a fallback [`Format`] to use if file format identification fails
+    pub fn fallback(mut self, fallback: Option<Format>) -> Self {
+        self.fallback = fallback;
+        self
+    }
+
+    /// Determine the [`Format`] of a file path based on its file extension.
+    #[cfg_attr(all(feature = "json", feature = "yaml"), doc = concat!(
+        "# Example\n",
+        "\n",
+        "```\n",
+        "use cfgurate::{Cfgurate, Format};\n",
+        "\n",
+        "let cfgurate = Cfgurate::new()\n",
+        "    .formats([Format::Json, Format::Yaml])\n",
+        "    .fallback(Some(Format::Json));\n",
+        "\n",
+        "assert_eq!(cfgurate.identify(\"path/to/file.json\").unwrap(), Format::Json);\n",
+        "assert_eq!(cfgurate.identify(\"path/to/file.YML\").unwrap(), Format::Yaml);\n",
+        "assert_eq!(cfgurate.identify(\"path/to/file.ron\").unwrap(), Format::Json);\n",
+        "assert_eq!(cfgurate.identify(\"path/to/file.cfg\").unwrap(), Format::Json);\n",
+        "assert_eq!(cfgurate.identify(\"path/to/file\").unwrap(), Format::Json);\n",
+        "```\n",
+    ))]
+    /// # Errors
+    ///
+    /// Returns an error if the given file path does not have an extension, the
+    /// extension is not valid Unicode, or the extension does not belong to a
+    /// supported [`Format`].
+    ///
+    /// All error conditions are suppressed if a [fallback][Cfgurate::fallback]
+    /// was set.
+    pub fn identify<P: AsRef<Path>>(&self, path: P) -> Result<Format, IdentifyError> {
+        let ext = match (get_ext(path.as_ref()), self.fallback) {
+            (Ok(ext), _) => ext,
+            (Err(_), Some(f)) => return Ok(f),
+            (Err(e), _) => return Err(e),
+        };
+        self.formats
+            .iter()
+            .find(|f| f.has_extension(ext))
+            .copied()
+            .or(self.fallback)
+            .ok_or_else(|| IdentifyError::Unknown(ext.to_owned()))
+    }
+
+    /// Deserialize the contents of the given file, with the format
+    /// automatically determined based on the file's extension.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the format cannot be determined from the file
+    /// extension and no fallback format was set, if an I/O error occurs, or if
+    /// the underlying deserializer returns an error.
+    pub fn load<T: DeserializeOwned, P: AsRef<Path>>(&self, path: P) -> Result<T, LoadError> {
+        let fmt = self.identify(&path)?;
+        let fp = File::open(path).map_err(LoadError::Open)?;
+        fmt.load_from_reader(fp).map_err(Into::into)
+    }
+
+    /// Serialize a value to the given file, with the format automatically
+    /// determined based on the file's extension.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the format cannot be determined from the file
+    /// extension and no fallback format was set, if an I/O error occurs, or if
+    /// the underlying serializer returns an error.
+    pub fn dump<T: Serialize, P: AsRef<Path>>(&self, value: &T, path: P) -> Result<(), DumpError> {
+        let fmt = self.identify(&path)?;
+        let fp = File::create(path).map_err(DumpError::Open)?;
+        fmt.dump_to_writer(fp, value).map_err(Into::into)
+    }
+}
+
+impl Default for Cfgurate {
+    /// Same as [`Cfgurate::new()`]
+    fn default() -> Cfgurate {
+        Cfgurate::new()
+    }
+}
+
+/// Error type returned by [`Format::identify()`] and [`Cfgurate::identify()`]
 #[derive(Clone, Debug, Eq, Error, PartialEq)]
 pub enum IdentifyError {
     /// Returned if the file path's extension did not correspond to a known &
@@ -420,8 +543,8 @@ pub enum IdentifyError {
     NoExtension,
 }
 
-/// Error type returned by [Format::dump_to_string] and
-/// [Format::dump_to_writer]
+/// Error type returned by [`Format::dump_to_string()`] and
+/// [`Format::dump_to_writer()`]
 ///
 /// The available variants on this enum depend on which formats were enabled at
 /// compile time.
@@ -459,8 +582,8 @@ pub enum SerializeError {
     Yaml(#[from] serde_yaml::Error),
 }
 
-/// Error type returned by [Format::load_from_str] and
-/// [Format::load_from_reader]
+/// Error type returned by [`Format::load_from_str()`] and
+/// [`Format::load_from_reader()`]
 ///
 /// The available variants on this enum depend on which formats were enabled at
 /// compile time.
@@ -504,7 +627,7 @@ pub enum DeserializeError {
     Yaml(#[from] serde_yaml::Error),
 }
 
-/// Error type returned by [load]
+/// Error type returned by [`load()`] and [`Cfgurate::load()`]
 #[derive(Debug, Error)]
 pub enum LoadError {
     /// Returned if the file format could not be identified from the file
@@ -521,7 +644,7 @@ pub enum LoadError {
     Deserialize(#[from] DeserializeError),
 }
 
-/// Error type returned by [dump]
+/// Error type returned by [`dump()`] and [`Cfgurate::dump()`]
 #[derive(Debug, Error)]
 pub enum DumpError {
     /// Returned if the file format could not be identified from the file
@@ -538,6 +661,20 @@ pub enum DumpError {
     Serialize(#[from] SerializeError),
 }
 
+#[cfg(feature = "ron")]
+fn ron_config() -> PrettyConfig {
+    // The default PrettyConfig sets new_line to CR LF on Windows.  Let's not
+    // do that here.
+    PrettyConfig::default().new_line(String::from("\n"))
+}
+
+fn get_ext(path: &Path) -> Result<&str, IdentifyError> {
+    path.extension()
+        .ok_or(IdentifyError::NoExtension)?
+        .to_str()
+        .ok_or(IdentifyError::NotUnicode)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -550,7 +687,14 @@ mod tests {
     #[case("file.jsn", "jsn")]
     #[case("file.tml", "tml")]
     fn identify_unknown(#[case] path: &str, #[case] ext: String) {
-        assert_eq!(Format::identify(path), Err(IdentifyError::Unknown(ext)));
+        assert_eq!(
+            Format::identify(path),
+            Err(IdentifyError::Unknown(ext.clone()))
+        );
+        assert_eq!(
+            Cfgurate::default().identify(path),
+            Err(IdentifyError::Unknown(ext))
+        );
     }
 
     #[cfg(unix)]
@@ -559,6 +703,10 @@ mod tests {
         use std::os::unix::ffi::OsStrExt;
         let path = std::ffi::OsStr::from_bytes(b"file.js\xF6n");
         assert_eq!(Format::identify(path), Err(IdentifyError::NotUnicode));
+        assert_eq!(
+            Cfgurate::default().identify(path),
+            Err(IdentifyError::NotUnicode)
+        );
     }
 
     #[cfg(windows)]
@@ -568,12 +716,20 @@ mod tests {
         let path = std::ffi::OsString::from_wide(&[
             0x66, 0x69, 0x6C, 0x65, 0x2E, 0x6A, 0xDC00, 0x73, 0x6E,
         ]);
-        assert_eq!(Format::identify(path), Err(IdentifyError::NotUnicode));
+        assert_eq!(Format::identify(&path), Err(IdentifyError::NotUnicode));
+        assert_eq!(
+            Cfgurate::default().identify(path),
+            Err(IdentifyError::NotUnicode)
+        );
     }
 
     #[test]
     fn identify_no_ext() {
         assert_eq!(Format::identify("file"), Err(IdentifyError::NoExtension));
+        assert_eq!(
+            Cfgurate::default().identify("file"),
+            Err(IdentifyError::NoExtension)
+        );
     }
 
     #[cfg(feature = "json")]
@@ -597,6 +753,7 @@ mod tests {
         #[case("JSON")]
         #[case(".JSON")]
         fn from_extension(#[case] ext: &str) {
+            assert!(Format::Json.has_extension(ext));
             assert_eq!(Format::from_extension(ext).unwrap(), Format::Json);
         }
 
@@ -648,6 +805,7 @@ mod tests {
         #[case("JSON5")]
         #[case(".JSON5")]
         fn from_extension(#[case] ext: &str) {
+            assert!(Format::Json5.has_extension(ext));
             assert_eq!(Format::from_extension(ext).unwrap(), Format::Json5);
         }
 
@@ -699,6 +857,7 @@ mod tests {
         #[case("RON")]
         #[case(".RON")]
         fn from_extension(#[case] ext: &str) {
+            assert!(Format::Ron.has_extension(ext));
             assert_eq!(Format::from_extension(ext).unwrap(), Format::Ron);
         }
 
@@ -750,6 +909,7 @@ mod tests {
         #[case("TOML")]
         #[case(".TOML")]
         fn from_extension(#[case] ext: &str) {
+            assert!(Format::Toml.has_extension(ext));
             assert_eq!(Format::from_extension(ext).unwrap(), Format::Toml);
         }
 
@@ -805,6 +965,7 @@ mod tests {
         #[case("YML")]
         #[case(".YML")]
         fn from_extension(#[case] ext: &str) {
+            assert!(Format::Yaml.has_extension(ext));
             assert_eq!(Format::from_extension(ext).unwrap(), Format::Yaml);
         }
 
@@ -835,6 +996,77 @@ mod tests {
                 Format::identify("file.yaml"),
                 Err(IdentifyError::Unknown(String::from("yaml")))
             );
+        }
+    }
+
+    mod cfgurate {
+        #[allow(unused_imports)]
+        use super::*;
+
+        #[cfg(all(
+            feature = "json",
+            feature = "json5",
+            feature = "ron",
+            feature = "toml",
+            feature = "yaml"
+        ))]
+        #[test]
+        fn default() {
+            let cfg = Cfgurate::default();
+            assert_eq!(cfg.identify("file.json").unwrap(), Format::Json);
+            assert_eq!(cfg.identify("file.json5").unwrap(), Format::Json5);
+            assert_eq!(cfg.identify("file.Ron").unwrap(), Format::Ron);
+            assert_eq!(cfg.identify("file.toml").unwrap(), Format::Toml);
+            assert_eq!(cfg.identify("file.YML").unwrap(), Format::Yaml);
+            assert!(cfg.identify("file.cfg").is_err());
+            assert!(cfg.identify("file").is_err());
+        }
+
+        #[cfg(all(
+            feature = "json",
+            feature = "json5",
+            feature = "ron",
+            feature = "toml",
+            feature = "yaml"
+        ))]
+        #[test]
+        fn fallback() {
+            let cfg = Cfgurate::new().fallback(Some(Format::Json));
+            assert_eq!(cfg.identify("file.json").unwrap(), Format::Json);
+            assert_eq!(cfg.identify("file.json5").unwrap(), Format::Json5);
+            assert_eq!(cfg.identify("file.Ron").unwrap(), Format::Ron);
+            assert_eq!(cfg.identify("file.toml").unwrap(), Format::Toml);
+            assert_eq!(cfg.identify("file.YML").unwrap(), Format::Yaml);
+            assert_eq!(cfg.identify("file.cfg").unwrap(), Format::Json);
+            assert_eq!(cfg.identify("file").unwrap(), Format::Json);
+        }
+
+        #[cfg(all(feature = "json", feature = "toml"))]
+        #[test]
+        fn formats() {
+            let cfg = Cfgurate::new().formats([Format::Json, Format::Toml]);
+            assert_eq!(cfg.identify("file.json").unwrap(), Format::Json);
+            assert!(cfg.identify("file.json5").is_err());
+            assert!(cfg.identify("file.Ron").is_err());
+            assert_eq!(cfg.identify("file.toml").unwrap(), Format::Toml);
+            assert!(cfg.identify("file.YML").is_err());
+            assert!(cfg.identify("file.cfg").is_err());
+            assert!(cfg.identify("file").is_err());
+        }
+
+        #[cfg(all(feature = "json", feature = "toml", feature = "yaml"))]
+        #[test]
+        fn formats_fallback() {
+            let cfg = Cfgurate::new()
+                .formats([Format::Json, Format::Toml])
+                .fallback(Some(Format::Yaml));
+            assert_eq!(cfg.identify("file.json").unwrap(), Format::Json);
+            assert_eq!(cfg.identify("file.json5").unwrap(), Format::Yaml);
+            assert_eq!(cfg.identify("file.Ron").unwrap(), Format::Yaml);
+            assert_eq!(cfg.identify("file.toml").unwrap(), Format::Toml);
+            assert_eq!(cfg.identify("file.YML").unwrap(), Format::Yaml);
+            assert_eq!(cfg.identify("file.cfg").unwrap(), Format::Yaml);
+            assert_eq!(cfg.identify("file").unwrap(), Format::Yaml);
         }
     }
 }

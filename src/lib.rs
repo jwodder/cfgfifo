@@ -402,8 +402,8 @@ pub fn load<T: DeserializeOwned, P: AsRef<Path>>(path: P) -> Result<T, LoadError
 /// Returns an error if the format cannot be determined from the file
 /// extension, if an I/O error occurs, or if the underlying serializer returns
 /// an error.
-pub fn dump<T: Serialize, P: AsRef<Path>>(value: &T, path: P) -> Result<(), DumpError> {
-    Cfgurate::default().dump(value, path)
+pub fn dump<P: AsRef<Path>, T: Serialize>(path: P, value: &T) -> Result<(), DumpError> {
+    Cfgurate::default().dump(path, value)
 }
 
 /// A configurable loader & dumper of serialized data in files.
@@ -511,7 +511,7 @@ impl Cfgurate {
     /// Returns an error if the format cannot be determined from the file
     /// extension and no fallback format was set, if an I/O error occurs, or if
     /// the underlying serializer returns an error.
-    pub fn dump<T: Serialize, P: AsRef<Path>>(&self, value: &T, path: P) -> Result<(), DumpError> {
+    pub fn dump<P: AsRef<Path>, T: Serialize>(&self, path: P, value: &T) -> Result<(), DumpError> {
         let fmt = self.identify(&path)?;
         let fp = File::create(path).map_err(DumpError::Open)?;
         fmt.dump_to_writer(fp, value).map_err(Into::into)

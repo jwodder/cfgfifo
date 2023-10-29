@@ -101,7 +101,7 @@ fn load_from_file() {
 #[test]
 fn dump_to_file() {
     let mut file = Builder::new().suffix(".toml").tempfile().unwrap();
-    let r = dump(&Config::get(), &file);
+    let r = dump(&file, &Config::get());
     assert!(r.is_ok());
     file.flush().unwrap();
     file.rewind().unwrap();

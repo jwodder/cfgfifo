@@ -101,7 +101,7 @@ fn load_from_file() {
 #[test]
 fn dump_to_file() {
     let mut file = Builder::new().suffix(".ron").tempfile().unwrap();
-    let r = dump(&RonConfig::get(), &file);
+    let r = dump(&file, &RonConfig::get());
     assert!(r.is_ok());
     file.flush().unwrap();
     file.rewind().unwrap();

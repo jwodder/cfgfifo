@@ -56,8 +56,8 @@ static JSON: &str = indoc! {r#"
 }"#};
 
 #[test]
-fn deserialize() {
-    let r = Format::Json.deserialize::<Config>(JSON);
+fn load_from_str() {
+    let r = Format::Json.load_from_str::<Config>(JSON);
     cfg_if! {
         if #[cfg(feature = "json")] {
             assert_eq!(r.unwrap(), Config::get());
@@ -68,8 +68,8 @@ fn deserialize() {
 }
 
 #[test]
-fn serialize() {
-    let r = Format::Json.serialize(&Config::get());
+fn dump_to_string() {
+    let r = Format::Json.dump_to_string(&Config::get());
     cfg_if! {
         if #[cfg(feature = "json")] {
             assert_eq!(r.unwrap(), JSON);

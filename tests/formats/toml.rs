@@ -55,8 +55,8 @@ family_name = "McCharles"
 "#};
 
 #[test]
-fn deserialize() {
-    let r = Format::Toml.deserialize::<Config>(TOML);
+fn load_from_str() {
+    let r = Format::Toml.load_from_str::<Config>(TOML);
     cfg_if! {
         if #[cfg(feature = "toml")] {
             assert_eq!(r.unwrap(), Config::get());
@@ -67,8 +67,8 @@ fn deserialize() {
 }
 
 #[test]
-fn serialize() {
-    let r = Format::Toml.serialize(&Config::get());
+fn dump_to_string() {
+    let r = Format::Toml.dump_to_string(&Config::get());
     cfg_if! {
         if #[cfg(feature = "toml")] {
             assert_eq!(r.unwrap(), TOML);

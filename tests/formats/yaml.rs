@@ -43,8 +43,8 @@ people:
 "#};
 
 #[test]
-fn deserialize() {
-    let r = Format::Yaml.deserialize::<Config>(YAML);
+fn load_from_str() {
+    let r = Format::Yaml.load_from_str::<Config>(YAML);
     cfg_if! {
         if #[cfg(feature = "yaml")] {
             assert_eq!(r.unwrap(), Config::get());
@@ -55,8 +55,8 @@ fn deserialize() {
 }
 
 #[test]
-fn serialize() {
-    let r = Format::Yaml.serialize(&Config::get());
+fn dump_to_string() {
+    let r = Format::Yaml.dump_to_string(&Config::get());
     cfg_if! {
         if #[cfg(feature = "yaml")] {
             assert_eq!(r.unwrap(), YAML);

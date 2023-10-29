@@ -85,7 +85,7 @@ impl Format {
     }
 
     #[allow(unused)]
-    pub fn serialize<T: Serialize>(&self, value: &T) -> Result<String, SerializeError> {
+    pub fn dump_to_string<T: Serialize>(&self, value: &T) -> Result<String, SerializeError> {
         match self {
             Format::Json => {
                 cfg_if! {
@@ -118,7 +118,7 @@ impl Format {
     }
 
     #[allow(unused)]
-    pub fn deserialize<T: DeserializeOwned>(&self, s: &str) -> Result<T, DeserializeError> {
+    pub fn load_from_str<T: DeserializeOwned>(&self, s: &str) -> Result<T, DeserializeError> {
         match self {
             Format::Json => {
                 cfg_if! {

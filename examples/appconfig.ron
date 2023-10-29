@@ -1,0 +1,5 @@
+AppConfig(
+    enable_foo: false,
+    bar_type: Closed,
+    flavor: Some("ron"),
+)

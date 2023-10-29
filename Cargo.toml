@@ -22,6 +22,7 @@ categories = ["config", "encoding", "filesystem"]
 exclude = ["/.*"]
 
 [dependencies]
+anyhow = { version = "1.0.75", optional = true }
 cfg-if = "1.0.0"
 json5 = { version = "0.4.1", optional = true }
 ron = { version = "0.8.1", optional = true }
@@ -34,6 +35,7 @@ toml = { version = "0.8.6", optional = true }
 
 [features]
 default = ["json", "json5", "ron", "toml", "yaml"]
+examples = ["dep:anyhow", "serde/derive"]
 json = ["dep:serde_json"]
 json5 = ["dep:json5", "dep:serde_json"]
 ron = ["dep:ron"]
@@ -47,3 +49,7 @@ pretty_assertions = "1.4.0"
 rstest = { version = "0.18.2", default-features = false }
 serde = { version = "1.0.190", features = ["derive"] }
 tempfile = "3.8.1"
+
+[[example]]
+name = "appconfig"
+required-features = ["examples"]

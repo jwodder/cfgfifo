@@ -100,7 +100,7 @@
 //! ```
 
 use serde::{de::DeserializeOwned, Serialize};
-#[allow(unused)]
+#[allow(unused_imports)]
 use serde_path_to_error::{deserialize as depath, serialize as serpath, Error as PathError};
 use std::fs::File;
 use std::io;
@@ -307,7 +307,7 @@ impl Format {
     /// # Errors
     ///
     /// Returns an error if the underlying serializer returns an error.
-    #[allow(unused)]
+    #[allow(unused_variables)]
     pub fn dump_to_string<T: Serialize>(&self, value: &T) -> Result<String, SerializeError> {
         match self {
             #[cfg(feature = "json")]
@@ -319,8 +319,7 @@ impl Format {
             }
             #[cfg(feature = "json5")]
             Format::Json5 => {
-                /// json5::to_string() just serializes as JSON, but
-                /// non-prettily.
+                // json5::to_string() just serializes as JSON, but non-prettily
                 let mut buffer = Vec::new();
                 let mut ser = serde_json::Serializer::pretty(&mut buffer);
                 serpath(value, &mut ser)?;
@@ -347,6 +346,7 @@ impl Format {
                 self.dump_to_writer(&mut buffer, value)?;
                 Ok(String::from_utf8(buffer).expect("serialized YAML should be valid UTF-8"))
             }
+            #[allow(unreachable_patterns)]
             _ => unreachable!(),
         }
     }
@@ -387,7 +387,7 @@ impl Format {
     /// # Errors
     ///
     /// Returns an error if the underlying deserializer returns an error.
-    #[allow(unused)]
+    #[allow(unused_variables)]
     pub fn load_from_str<T: DeserializeOwned>(&self, s: &str) -> Result<T, DeserializeError> {
         match self {
             #[cfg(feature = "json")]
@@ -429,6 +429,7 @@ impl Format {
                 let de = serde_yaml::Deserializer::from_str(s);
                 depath(de).map_err(Into::into)
             }
+            #[allow(unreachable_patterns)]
             _ => unreachable!(),
         }
     }
@@ -443,7 +444,7 @@ impl Format {
     ///
     /// Returns an error if an I/O error occurs or if the underlying serializer
     /// returns an error.
-    #[allow(unused)]
+    #[allow(unused_mut, unused_variables)]
     pub fn dump_to_writer<W: io::Write, T: Serialize>(
         &self,
         mut writer: W,
@@ -485,6 +486,7 @@ impl Format {
                 let mut ser = serde_yaml::Serializer::new(writer);
                 serpath(value, &mut ser).map_err(Into::into)
             }
+            #[allow(unreachable_patterns)]
             _ => unreachable!(),
         }
     }
@@ -495,10 +497,10 @@ impl Format {
     ///
     /// Returns an error if an I/O error occurs or if the underlying
     /// deserializer returns an error.
-    #[allow(unused)]
+    #[allow(unused_variables)]
     pub fn load_from_reader<R: io::Read, T: DeserializeOwned>(
         &self,
-        mut reader: R,
+        reader: R,
     ) -> Result<T, DeserializeError> {
         match self {
             #[cfg(feature = "json")]
@@ -528,6 +530,7 @@ impl Format {
                 let de = serde_yaml::Deserializer::from_reader(reader);
                 depath(de).map_err(Into::into)
             }
+            #[allow(unreachable_patterns)]
             _ => unreachable!(),
         }
     }

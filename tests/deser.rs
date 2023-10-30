@@ -134,7 +134,7 @@ struct RonConfig {
 }
 
 impl RonConfig {
-    #[allow(unused)]
+    #[allow(dead_code)]
     fn get() -> RonConfig {
         RonConfig {
             primitives: Primitives::get(),
@@ -152,7 +152,7 @@ struct RonEnums {
 }
 
 impl RonEnums {
-    #[allow(unused)]
+    #[allow(dead_code)]
     fn get() -> RonEnums {
         RonEnums {
             color: Color::Green,

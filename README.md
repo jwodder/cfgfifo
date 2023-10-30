@@ -4,7 +4,7 @@
 [![Minimum Supported Rust Version](https://img.shields.io/badge/MSRV-1.67-orange)](https://www.rust-lang.org)
 [![MIT License](https://img.shields.io/github/license/jwodder/cfgfifo.svg)](https://opensource.org/licenses/MIT)
 
-[GitHub](https://github.com/jwodder/cfgfifo) | [crates.io](https://crates.io/crates/cfgfifo) | [Documentation](https://docs.rs/cfgfifo) | [Issues](https://github.com/jwodder/cfgfifo/issues)
+[GitHub](https://github.com/jwodder/cfgfifo) | [crates.io](https://crates.io/crates/cfgfifo) | [Documentation](https://docs.rs/cfgfifo) | [Issues](https://github.com/jwodder/cfgfifo/issues) | [Changelog](https://github.com/jwodder/cfgfifo/blob/master/CHANGELOG.md)
 
 `cfgfifo` is a Rust library for serializing & deserializing various common
 configuration file formats ([JSON][], [JSON5][], [RON][], [TOML][], and

@@ -53,12 +53,14 @@
 //!
 //! The following format-specific limitations are currently known:
 //!
-//! - RON does not support internally tagged enums, untagged enums, or the
-//!   `serde(flatten)` attribute.
+//! - RON has limited support for internally tagged enums with fields, untagged
+//!   enums with fields, and the `serde(flatten)` attribute.
 //!
-//! - TOML does not support the unit type `()`.
+//! - TOML does not support the unit tuple `()`, unit (fieldless) structs, maps
+//!   with non-string keys, or top-level types that do not serialize to tables.
 //!
-//! - YAML does not support bytes.
+//! - YAML does not support bytes or nested enums (e.g.,
+//!   `Enum::Variant(AnotherEnum)`, where `AnotherEnum` is "fat").
 //!
 //! Example
 //! =======

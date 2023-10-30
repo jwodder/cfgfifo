@@ -13,6 +13,23 @@
 //! [TOML]: https://toml.io
 //! [YAML]: https://yaml.org
 //!
+//! Overview
+//! ========
+//!
+//! - Call [`load()`] on a file path to deserialize its contents as a
+//!   [`serde::de::DeserializeOwned`] type.  The file's format will be
+//!   determined based on its file extension.
+//!
+//! - Call [`dump()`] on a file path to serialize a [`serde::Serialize`] value
+//!   to it.  The file's format will be determined based on its file extension.
+//!
+//! - For finer control over how file formats are identified, configure a
+//!   [`Cfgurate`] struct and use its [`load()`][Cfgurate::load] and
+//!   [`dump()`][Cfgurate::dump] methods.
+//!
+//! - For per-format operations, including (de)serializing to & from strings,
+//!   readers, and writers, use the [`Format`] enum.
+//!
 //! Features
 //! ========
 //!

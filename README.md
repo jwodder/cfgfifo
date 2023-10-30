@@ -1,10 +1,10 @@
-[![Project Status: WIP – Initial development is in progress, but there has not yet been a stable, usable release suitable for the public.](https://www.repostatus.org/badges/latest/wip.svg)](https://www.repostatus.org/#wip)
+[![Project Status: Active – The project has reached a stable, usable state and is being actively developed.](https://www.repostatus.org/badges/latest/active.svg)](https://www.repostatus.org/#active)
 [![CI Status](https://github.com/jwodder/cfgfifo/actions/workflows/test.yml/badge.svg)](https://github.com/jwodder/cfgfifo/actions/workflows/test.yml)
 [![codecov.io](https://codecov.io/gh/jwodder/cfgfifo/branch/master/graph/badge.svg)](https://codecov.io/gh/jwodder/cfgfifo)
 [![Minimum Supported Rust Version](https://img.shields.io/badge/MSRV-1.67-orange)](https://www.rust-lang.org)
 [![MIT License](https://img.shields.io/github/license/jwodder/cfgfifo.svg)](https://opensource.org/licenses/MIT)
 
-[GitHub](https://github.com/jwodder/cfgfifo) | [Issues](https://github.com/jwodder/cfgfifo/issues)
+[GitHub](https://github.com/jwodder/cfgfifo) | [crates.io](https://crates.io/crates/cfgfifo) | [Documentation](https://docs.rs/cfgfifo) | [Issues](https://github.com/jwodder/cfgfifo/issues)
 
 `cfgfifo` is a Rust library for serializing & deserializing various common
 configuration file formats ([JSON][], [JSON5][], [RON][], [TOML][], and

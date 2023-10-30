@@ -1,7 +1,8 @@
-#![allow(unused)]
 mod formats;
+use cfgfifo::*;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
+use tempfile::Builder;
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 struct Config {
@@ -133,6 +134,7 @@ struct RonConfig {
 }
 
 impl RonConfig {
+    #[allow(unused)]
     fn get() -> RonConfig {
         RonConfig {
             primitives: Primitives::get(),
@@ -150,6 +152,7 @@ struct RonEnums {
 }
 
 impl RonEnums {
+    #[allow(unused)]
     fn get() -> RonEnums {
         RonEnums {
             color: Color::Green,
@@ -173,4 +176,24 @@ enum RonMessage {
         id: u32,
         value: String,
     },
+}
+
+#[test]
+fn load_unknown() {
+    let file = Builder::new().suffix(".unk").tempfile().unwrap();
+    let r = load::<Config, _>(file);
+    let Err(LoadError::Identify(e)) = r else {
+        panic!("load() did not fail with Identify error: {r:?}");
+    };
+    assert_eq!(e, IdentifyError::Unknown(String::from("unk")));
+}
+
+#[test]
+fn dump_unknown() {
+    let file = Builder::new().suffix(".unk").tempfile().unwrap();
+    let r = dump(&file, &Config::get());
+    let Err(DumpError::Identify(e)) = r else {
+        panic!("dump() did not fail with Identify error: {r:?}");
+    };
+    assert_eq!(e, IdentifyError::Unknown(String::from("unk")));
 }

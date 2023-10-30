@@ -110,3 +110,27 @@ fn dump_to_file() {
     assert_eq!(s, format!("{JSON}\n"));
     assert!(s.ends_with("}\n"));
 }
+
+#[test]
+fn fallback_load() {
+    let mut file = Builder::new().suffix(".unk").tempfile().unwrap();
+    writeln!(file, "{JSON}").unwrap();
+    file.flush().unwrap();
+    file.rewind().unwrap();
+    let cfg = Cfgfifo::new().fallback(Some(Format::Json));
+    let r = cfg.load::<Config, _>(file);
+    assert_eq!(r.unwrap(), Config::get());
+}
+
+#[test]
+fn fallback_dump() {
+    let mut file = Builder::new().suffix(".unk").tempfile().unwrap();
+    let cfg = Cfgfifo::new().fallback(Some(Format::Json));
+    let r = cfg.dump(&file, &Config::get());
+    assert!(r.is_ok());
+    file.flush().unwrap();
+    file.rewind().unwrap();
+    let s = read_to_string(file).unwrap();
+    assert_eq!(s, format!("{JSON}\n"));
+    assert!(s.ends_with("}\n"));
+}

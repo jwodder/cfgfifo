@@ -100,6 +100,8 @@
 //! ```
 
 use serde::{de::DeserializeOwned, Serialize};
+#[allow(unused)]
+use serde_path_to_error::{deserialize as depath, serialize as serpath, Error as PathError};
 use std::fs::File;
 use std::io;
 use std::path::Path;
@@ -309,19 +311,42 @@ impl Format {
     pub fn dump_to_string<T: Serialize>(&self, value: &T) -> Result<String, SerializeError> {
         match self {
             #[cfg(feature = "json")]
-            Format::Json => serde_json::to_string_pretty(value).map_err(Into::into),
+            Format::Json => {
+                let mut buffer = Vec::new();
+                let mut ser = serde_json::Serializer::pretty(&mut buffer);
+                serpath(value, &mut ser)?;
+                Ok(String::from_utf8(buffer).expect("serialized JSON should be valid UTF-8"))
+            }
             #[cfg(feature = "json5")]
             Format::Json5 => {
                 /// json5::to_string() just serializes as JSON, but
                 /// non-prettily.
-                serde_json::to_string_pretty(value).map_err(Into::into)
+                let mut buffer = Vec::new();
+                let mut ser = serde_json::Serializer::pretty(&mut buffer);
+                serpath(value, &mut ser)?;
+                Ok(String::from_utf8(buffer).expect("serialized JSON should be valid UTF-8"))
             }
             #[cfg(feature = "ron")]
-            Format::Ron => ron::ser::to_string_pretty(value, ron_config()).map_err(Into::into),
+            Format::Ron => {
+                let mut buffer = Vec::new();
+                let mut ser = ron::Serializer::new(&mut buffer, Some(ron_config()))
+                    .map_err(SerializeError::RonStart)?;
+                serpath(value, &mut ser)?;
+                Ok(String::from_utf8(buffer).expect("serialized RON should be valid UTF-8"))
+            }
             #[cfg(feature = "toml")]
-            Format::Toml => toml::to_string_pretty(value).map_err(Into::into),
+            Format::Toml => {
+                let mut s = String::new();
+                let ser = toml::Serializer::pretty(&mut s);
+                serpath(value, ser)?;
+                Ok(s)
+            }
             #[cfg(feature = "yaml")]
-            Format::Yaml => serde_yaml::to_string(value).map_err(Into::into),
+            Format::Yaml => {
+                let mut buffer = Vec::new();
+                self.dump_to_writer(&mut buffer, value)?;
+                Ok(String::from_utf8(buffer).expect("serialized YAML should be valid UTF-8"))
+            }
             _ => unreachable!(),
         }
     }
@@ -366,15 +391,44 @@ impl Format {
     pub fn load_from_str<T: DeserializeOwned>(&self, s: &str) -> Result<T, DeserializeError> {
         match self {
             #[cfg(feature = "json")]
-            Format::Json => serde_json::from_str(s).map_err(Into::into),
+            Format::Json => {
+                let mut de = serde_json::Deserializer::from_str(s);
+                let value = depath(&mut de)?;
+                de.end().map_err(DeserializeError::JsonEnd)?;
+                Ok(value)
+            }
             #[cfg(feature = "json5")]
-            Format::Json5 => json5::from_str(s).map_err(Into::into),
+            Format::Json5 => {
+                let mut de =
+                    json5::Deserializer::from_str(s).map_err(DeserializeError::Json5Syntax)?;
+                depath(&mut de).map_err(Into::into)
+            }
             #[cfg(feature = "ron")]
-            Format::Ron => ron::from_str(s).map_err(Into::into),
+            Format::Ron => {
+                let mut de = ron::Deserializer::from_str(s).map_err(DeserializeError::RonStart)?;
+                let value = match depath(&mut de) {
+                    Ok(value) => value,
+                    Err(e) => {
+                        let path = e.path().clone();
+                        let inner = e.into_inner();
+                        let ron_e = de.span_error(inner);
+                        return Err(DeserializeError::Ron(PathError::new(path, ron_e)));
+                    }
+                };
+                de.end()
+                    .map_err(|e| DeserializeError::RonEnd(de.span_error(e)))?;
+                Ok(value)
+            }
             #[cfg(feature = "toml")]
-            Format::Toml => toml::from_str(s).map_err(Into::into),
+            Format::Toml => {
+                let de = toml::Deserializer::new(s);
+                depath(de).map_err(Into::into)
+            }
             #[cfg(feature = "yaml")]
-            Format::Yaml => serde_yaml::from_str(s).map_err(Into::into),
+            Format::Yaml => {
+                let de = serde_yaml::Deserializer::from_str(s);
+                depath(de).map_err(Into::into)
+            }
             _ => unreachable!(),
         }
     }
@@ -398,7 +452,8 @@ impl Format {
         match self {
             #[cfg(feature = "json")]
             Format::Json => {
-                serde_json::to_writer_pretty(&mut writer, value)?;
+                let mut ser = serde_json::Serializer::pretty(&mut writer);
+                serpath(value, &mut ser)?;
                 writer.write_all(b"\n")?;
                 Ok(())
             }
@@ -406,25 +461,30 @@ impl Format {
             Format::Json5 => {
                 // Serialize as JSON, as that's what json5 does, except the
                 // latter doesn't support serializing to a writer.
-                serde_json::to_writer_pretty(&mut writer, value)?;
+                let mut ser = serde_json::Serializer::pretty(&mut writer);
+                serpath(value, &mut ser)?;
                 writer.write_all(b"\n")?;
                 Ok(())
             }
             #[cfg(feature = "ron")]
             Format::Ron => {
-                let mut ser = ron::Serializer::new(&mut writer, Some(ron_config()))?;
-                value.serialize(&mut ser)?;
+                let mut ser = ron::Serializer::new(&mut writer, Some(ron_config()))
+                    .map_err(SerializeError::RonStart)?;
+                serpath(value, &mut ser)?;
                 writer.write_all(b"\n")?;
                 Ok(())
             }
             #[cfg(feature = "toml")]
             Format::Toml => {
-                let s = toml::to_string_pretty(value)?;
+                let s = self.dump_to_string(value)?;
                 writer.write_all(s.as_bytes())?;
                 Ok(())
             }
             #[cfg(feature = "yaml")]
-            Format::Yaml => serde_yaml::to_writer(writer, value).map_err(Into::into),
+            Format::Yaml => {
+                let mut ser = serde_yaml::Serializer::new(writer);
+                serpath(value, &mut ser).map_err(Into::into)
+            }
             _ => unreachable!(),
         }
     }
@@ -442,24 +502,32 @@ impl Format {
     ) -> Result<T, DeserializeError> {
         match self {
             #[cfg(feature = "json")]
-            Format::Json => serde_json::from_reader(reader).map_err(Into::into),
+            Format::Json => {
+                let mut de = serde_json::Deserializer::from_reader(reader);
+                let value = depath(&mut de)?;
+                de.end().map_err(DeserializeError::JsonEnd)?;
+                Ok(value)
+            }
             #[cfg(feature = "json5")]
             Format::Json5 => {
                 let s = io::read_to_string(reader)?;
-                json5::from_str(&s).map_err(Into::into)
+                self.load_from_str(&s)
             }
             #[cfg(feature = "ron")]
             Format::Ron => {
                 let s = io::read_to_string(reader)?;
-                ron::from_str(&s).map_err(Into::into)
+                self.load_from_str(&s)
             }
             #[cfg(feature = "toml")]
             Format::Toml => {
                 let s = io::read_to_string(reader)?;
-                toml::from_str(&s).map_err(Into::into)
+                self.load_from_str(&s)
             }
             #[cfg(feature = "yaml")]
-            Format::Yaml => serde_yaml::from_reader(reader).map_err(Into::into),
+            Format::Yaml => {
+                let de = serde_yaml::Deserializer::from_reader(reader);
+                depath(de).map_err(Into::into)
+            }
             _ => unreachable!(),
         }
     }
@@ -630,7 +698,8 @@ pub enum IdentifyError {
 /// [`Format::dump_to_writer()`]
 ///
 /// The available variants on this enum depend on which formats were enabled at
-/// compile time.
+/// compile time.  Where possible, errors from the format serializers are
+/// wrapped in [`serde_path_to_error::Error`].
 #[derive(Debug, Error)]
 #[non_exhaustive]
 pub enum SerializeError {
@@ -644,32 +713,39 @@ pub enum SerializeError {
     #[cfg(any(feature = "json", feature = "json5"))]
     #[cfg_attr(docsrs, doc(cfg(any(feature = "json", feature = "json5"))))]
     #[error(transparent)]
-    Json(#[from] serde_json::Error),
+    Json(#[from] PathError<serde_json::Error>),
+
+    /// Returned if initializing RON serialization failed
+    #[cfg(feature = "ron")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "ron")))]
+    #[error(transparent)]
+    RonStart(ron::error::Error),
 
     /// Returned if RON serialization failed
     #[cfg(feature = "ron")]
     #[cfg_attr(docsrs, doc(cfg(feature = "ron")))]
     #[error(transparent)]
-    Ron(#[from] ron::error::Error),
+    Ron(#[from] PathError<ron::error::Error>),
 
     /// Returned if TOML serialization failed
     #[cfg(feature = "toml")]
     #[cfg_attr(docsrs, doc(cfg(feature = "toml")))]
     #[error(transparent)]
-    Toml(#[from] toml::ser::Error),
+    Toml(#[from] PathError<toml::ser::Error>),
 
     /// Returned if YAML serialization failed
     #[cfg(feature = "yaml")]
     #[cfg_attr(docsrs, doc(cfg(feature = "yaml")))]
     #[error(transparent)]
-    Yaml(#[from] serde_yaml::Error),
+    Yaml(#[from] PathError<serde_yaml::Error>),
 }
 
 /// Error type returned by [`Format::load_from_str()`] and
 /// [`Format::load_from_reader()`]
 ///
 /// The available variants on this enum depend on which formats were enabled at
-/// compile time.
+/// compile time.  Where possible, errors from the format deserializers are
+/// wrapped in [`serde_path_to_error::Error`].
 #[derive(Debug, Error)]
 #[non_exhaustive]
 pub enum DeserializeError {
@@ -683,31 +759,56 @@ pub enum DeserializeError {
     #[cfg(feature = "json")]
     #[cfg_attr(docsrs, doc(cfg(feature = "json")))]
     #[error(transparent)]
-    Json(#[from] serde_json::Error),
+    Json(#[from] PathError<serde_json::Error>),
+
+    /// Returned if JSON input had invalid trailing characters
+    #[cfg(feature = "json")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "json")))]
+    #[error(transparent)]
+    JsonEnd(serde_json::Error),
+
+    /// Returned if JSON5 deserialization failed due to the input having
+    /// invalid syntax
+    #[cfg(feature = "json5")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "json5")))]
+    #[error(transparent)]
+    Json5Syntax(json5::Error),
 
     /// Returned if JSON5 deserialization failed
     #[cfg(feature = "json5")]
     #[cfg_attr(docsrs, doc(cfg(feature = "json5")))]
     #[error(transparent)]
-    Json5(#[from] json5::Error),
+    Json5(#[from] PathError<json5::Error>),
+
+    /// Returned if initializing RON deserialization failed
+    #[cfg(feature = "ron")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "ron")))]
+    #[error(transparent)]
+    RonStart(ron::error::SpannedError),
 
     /// Returned if RON deserialization failed
     #[cfg(feature = "ron")]
     #[cfg_attr(docsrs, doc(cfg(feature = "ron")))]
     #[error(transparent)]
-    Ron(#[from] ron::error::SpannedError),
+    Ron(#[from] PathError<ron::error::SpannedError>),
+
+    /// Returned if RON input had invalid trailing characters
+    #[cfg(feature = "ron")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "ron")))]
+    #[error(transparent)]
+    RonEnd(ron::error::SpannedError),
 
     /// Returned if TOML deserialization failed
     #[cfg(feature = "toml")]
     #[cfg_attr(docsrs, doc(cfg(feature = "toml")))]
     #[error(transparent)]
-    Toml(#[from] toml::de::Error),
+    Toml(#[from] PathError<toml::de::Error>),
 
     /// Returned if YAML deserialization failed
     #[cfg(feature = "yaml")]
     #[cfg_attr(docsrs, doc(cfg(feature = "yaml")))]
     #[error(transparent)]
-    Yaml(#[from] serde_yaml::Error),
+    Yaml(#[from] PathError<serde_yaml::Error>),
 }
 
 /// Error type returned by [`load()`] and [`Cfgfifo::load()`]

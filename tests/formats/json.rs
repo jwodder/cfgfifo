@@ -134,3 +134,29 @@ fn fallback_dump() {
     assert_eq!(s, format!("{JSON}\n"));
     assert!(s.ends_with("}\n"));
 }
+
+#[test]
+fn deserialize_error() {
+    let s = indoc! {r#"
+       {
+         "primitives": {
+           "integer": 3.14
+         },
+         "enums": {
+           "color": "green",
+           "msg": {
+             "type": "Response",
+             "id": 60069,
+             "value": "Foobar"
+           }
+         },
+         "people": []
+       }
+    "#};
+    let r = Format::Json.load_from_str::<Config>(s);
+    assert!(r.is_err());
+    assert_eq!(
+        r.unwrap_err().to_string(),
+        "primitives.integer: invalid type: floating point `3.14`, expected u32 at line 3 column 19"
+    );
+}

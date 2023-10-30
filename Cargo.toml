@@ -27,6 +27,7 @@ json5 = { version = "0.4.1", optional = true }
 ron = { version = "0.8.1", optional = true }
 serde = "1.0.190"
 serde_json = { version = "1.0.107", optional = true }
+serde_path_to_error = "0.1.14"
 serde_yaml = { version = "0.9.27", optional = true }
 strum = { version = "0.25.0", features = ["derive"] }
 thiserror = "1.0.50"

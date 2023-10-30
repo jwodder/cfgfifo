@@ -266,7 +266,40 @@ impl Format {
     }
 
     /// Serialize a value to a string in this format
-    ///
+    #[cfg_attr(feature = "json", doc = concat!(
+        "# Example\n",
+        "\n",
+        "```\n",
+        "use cfgfifo::Format;\n",
+        "use serde::Serialize;\n",
+        "\n",
+        "#[derive(Clone, Debug, Eq, PartialEq, Serialize)]\n",
+        "struct Data {\n",
+        "    name: String,\n",
+        "    size: u32,\n",
+        "    enabled: bool,\n",
+        "}\n",
+        "\n",
+        "let datum = Data {\n",
+        "    name: String::from(\"Example\"),\n",
+        "    size: 42,\n",
+        "    enabled: true,\n",
+        "};\n",
+        "\n",
+        "let s = Format::Json.dump_to_string(&datum).unwrap();\n",
+        "\n",
+        "assert_eq!(\n",
+        "    s,\n",
+        "    concat!(\n",
+        "        \"{\\n\",\n",
+        "        \"  \\\"name\\\": \\\"Example\\\",\\n\",\n",
+        "        \"  \\\"size\\\": 42,\\n\",\n",
+        "        \"  \\\"enabled\\\": true\\n\",\n",
+        "        \"}\"\n",
+        "    )\n",
+        ");\n",
+        "```\n",
+    ))]
     /// # Errors
     ///
     /// Returns an error if the underlying serializer returns an error.
@@ -292,7 +325,38 @@ impl Format {
     }
 
     /// Deserialize a string in this format
-    ///
+    #[cfg_attr(feature = "yaml", doc = concat!(
+        "# Example\n",
+        "\n",
+        "```\n",
+        "use cfgfifo::Format;\n",
+        "use serde::Deserialize;\n",
+        "\n",
+        "#[derive(Clone, Debug, Deserialize, Eq, PartialEq)]\n",
+        "struct Data {\n",
+        "    name: String,\n",
+        "    size: u32,\n",
+        "    enabled: bool,\n",
+        "}\n",
+        "\n",
+        "let s = concat!(\n",
+        "    \"name: Example\\n\",\n",
+        "    \"size: 42\\n\",\n",
+        "    \"enabled: true\\n\",\n",
+        ");\n",
+        "\n",
+        "let datum: Data = Format::Yaml.load_from_str(s).unwrap();\n",
+        "\n",
+        "assert_eq!(\n",
+        "    datum,\n",
+        "    Data {\n",
+        "        name: String::from(\"Example\"),\n",
+        "        size: 42,\n",
+        "        enabled: true,\n",
+        "    }\n",
+        ");\n",
+        "```\n",
+    ))]
     /// # Errors
     ///
     /// Returns an error if the underlying deserializer returns an error.

@@ -1,10 +1,10 @@
 #![cfg_attr(docsrs, feature(doc_cfg))]
-//! `cfgurate` is a Rust library for serializing & deserializing various common
+//! `cfgfifo` is a Rust library for serializing & deserializing various common
 //! configuration file formats ([JSON][], [JSON5][], [RON][], [TOML][], and
 //! [YAML][]), including autodetecting the format of a file based on its file
 //! extension.  It's good for application authors who want to support multiple
 //! configuration file formats but don't want to write out a bunch of
-//! boilerplate.  `cfgurate` has already written that boilerplate for you, so
+//! boilerplate.  `cfgfifo` has already written that boilerplate for you, so
 //! let it (de)serialize your files!
 //!
 //! [JSON]: https://www.json.org
@@ -24,8 +24,8 @@
 //!   to it.  The file's format will be determined based on its file extension.
 //!
 //! - For finer control over how file formats are identified, configure a
-//!   [`Cfgurate`] struct and use its [`load()`][Cfgurate::load] and
-//!   [`dump()`][Cfgurate::dump] methods.
+//!   [`Cfgfifo`] struct and use its [`load()`][Cfgfifo::load] and
+//!   [`dump()`][Cfgfifo::dump] methods.
 //!
 //! - For per-format operations, including (de)serializing to & from strings,
 //!   readers, and writers, use the [`Format`] enum.
@@ -88,9 +88,9 @@
 //!     let Some(cfgpath) = std::env::args().nth(1) else {
 //!         anyhow::bail!("No configuration file specified");
 //!     };
-//!     // cfgurate identifies the format used by the file `cfgpath` based on its
+//!     // cfgfifo identifies the format used by the file `cfgpath` based on its
 //!     // file extension and deserializes it appropriately:
-//!     let cfg: AppConfig = cfgurate::load(cfgpath)?;
+//!     let cfg: AppConfig = cfgfifo::load(cfgpath)?;
 //!     println!("You specified the following configuration:");
 //!     println!("{cfg:#?}");
 //!     Ok(())
@@ -107,10 +107,10 @@ use thiserror::Error;
 #[cfg(feature = "ron")]
 use ron::ser::PrettyConfig;
 
-/// An enum of file formats supported by this build of `cfgurate`.
+/// An enum of file formats supported by this build of `cfgfifo`.
 ///
 /// Each variant is only present if the corresponding Cargo feature of
-/// `cfgurate` was enabled at compile time.
+/// `cfgfifo` was enabled at compile time.
 ///
 /// A Format can be [displayed][std::fmt::Display] as a string containing its
 /// name in all-uppercase, and a Format can be [parsed][std::str::FromStr] from
@@ -177,7 +177,7 @@ impl Format {
         "# Example\n",
         "\n",
         "```\n",
-        "use cfgurate::Format;\n",
+        "use cfgfifo::Format;\n",
         "\n",
         "assert_eq!(Format::Json.extensions(), &[\"json\"]);\n",
         "assert_eq!(Format::Yaml.extensions(), &[\"yaml\", \"yml\"]);\n",
@@ -208,7 +208,7 @@ impl Format {
         "# Example\n",
         "\n",
         "```\n",
-        "use cfgurate::Format;\n",
+        "use cfgfifo::Format;\n",
         "\n",
         "assert!(Format::Json.has_extension(\".json\"));\n",
         "assert!(Format::Json.has_extension(\"JSON\"));\n",
@@ -231,7 +231,7 @@ impl Format {
         "# Example\n",
         "\n",
         "```\n",
-        "use cfgurate::Format;\n",
+        "use cfgfifo::Format;\n",
         "\n",
         "assert_eq!(Format::from_extension(\".json\"), Some(Format::Json));\n",
         "assert_eq!(Format::from_extension(\"YML\"), Some(Format::Yaml));\n",
@@ -247,7 +247,7 @@ impl Format {
         "# Example\n",
         "\n",
         "```\n",
-        "use cfgurate::Format;\n",
+        "use cfgfifo::Format;\n",
         "\n",
         "assert_eq!(Format::identify(\"path/to/file.json\").unwrap(), Format::Json);\n",
         "assert_eq!(Format::identify(\"path/to/file.RON\").unwrap(), Format::Ron);\n",
@@ -408,7 +408,7 @@ impl Format {
 /// extension, if an I/O error occurs, or if the underlying deserializer
 /// returns an error.
 pub fn load<T: DeserializeOwned, P: AsRef<Path>>(path: P) -> Result<T, LoadError> {
-    Cfgurate::default().load(path)
+    Cfgfifo::default().load(path)
 }
 
 /// Serialize a value to the given file, with the format automatically
@@ -420,27 +420,27 @@ pub fn load<T: DeserializeOwned, P: AsRef<Path>>(path: P) -> Result<T, LoadError
 /// extension, if an I/O error occurs, or if the underlying serializer returns
 /// an error.
 pub fn dump<P: AsRef<Path>, T: Serialize>(path: P, value: &T) -> Result<(), DumpError> {
-    Cfgurate::default().dump(path, value)
+    Cfgfifo::default().dump(path, value)
 }
 
 /// A configurable loader & dumper of serialized data in files.
 ///
-/// By default, a `Cfgurate` instance's [`identify()`][Cfgurate::identify],
-/// [`load()`][Cfgurate::load], and [`dump()`][Cfgurate::dump] methods act the
+/// By default, a `Cfgfifo` instance's [`identify()`][Cfgfifo::identify],
+/// [`load()`][Cfgfifo::load], and [`dump()`][Cfgfifo::dump] methods act the
 /// same as [`Format::identify()`], [`load()`], and [`dump()`], but the
 /// instance can be customized to only support a subset of enabled [`Format`]s
 /// and/or to use a given fallback [`Format`] if identifying a file's format
 /// fails.
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub struct Cfgurate {
+pub struct Cfgfifo {
     formats: Vec<Format>,
     fallback: Option<Format>,
 }
 
-impl Cfgurate {
-    /// Create a new Cfgurate instance
-    pub fn new() -> Cfgurate {
-        Cfgurate {
+impl Cfgfifo {
+    /// Create a new Cfgfifo instance
+    pub fn new() -> Cfgfifo {
+        Cfgfifo {
             formats: Format::iter().collect(),
             fallback: None,
         }
@@ -471,17 +471,17 @@ impl Cfgurate {
         "# Example\n",
         "\n",
         "```\n",
-        "use cfgurate::{Cfgurate, Format};\n",
+        "use cfgfifo::{Cfgfifo, Format};\n",
         "\n",
-        "let cfgurate = Cfgurate::new()\n",
+        "let cfgfifo = Cfgfifo::new()\n",
         "    .formats([Format::Json, Format::Yaml])\n",
         "    .fallback(Some(Format::Json));\n",
         "\n",
-        "assert_eq!(cfgurate.identify(\"path/to/file.json\").unwrap(), Format::Json);\n",
-        "assert_eq!(cfgurate.identify(\"path/to/file.YML\").unwrap(), Format::Yaml);\n",
-        "assert_eq!(cfgurate.identify(\"path/to/file.ron\").unwrap(), Format::Json);\n",
-        "assert_eq!(cfgurate.identify(\"path/to/file.cfg\").unwrap(), Format::Json);\n",
-        "assert_eq!(cfgurate.identify(\"path/to/file\").unwrap(), Format::Json);\n",
+        "assert_eq!(cfgfifo.identify(\"path/to/file.json\").unwrap(), Format::Json);\n",
+        "assert_eq!(cfgfifo.identify(\"path/to/file.YML\").unwrap(), Format::Yaml);\n",
+        "assert_eq!(cfgfifo.identify(\"path/to/file.ron\").unwrap(), Format::Json);\n",
+        "assert_eq!(cfgfifo.identify(\"path/to/file.cfg\").unwrap(), Format::Json);\n",
+        "assert_eq!(cfgfifo.identify(\"path/to/file\").unwrap(), Format::Json);\n",
         "```\n",
     ))]
     /// # Errors
@@ -490,7 +490,7 @@ impl Cfgurate {
     /// extension is not valid Unicode, or the extension does not belong to a
     /// supported [`Format`].
     ///
-    /// All error conditions are suppressed if a [fallback][Cfgurate::fallback]
+    /// All error conditions are suppressed if a [fallback][Cfgfifo::fallback]
     /// was set.
     pub fn identify<P: AsRef<Path>>(&self, path: P) -> Result<Format, IdentifyError> {
         let ext = match (get_ext(path.as_ref()), self.fallback) {
@@ -535,14 +535,14 @@ impl Cfgurate {
     }
 }
 
-impl Default for Cfgurate {
-    /// Same as [`Cfgurate::new()`]
-    fn default() -> Cfgurate {
-        Cfgurate::new()
+impl Default for Cfgfifo {
+    /// Same as [`Cfgfifo::new()`]
+    fn default() -> Cfgfifo {
+        Cfgfifo::new()
     }
 }
 
-/// Error type returned by [`Format::identify()`] and [`Cfgurate::identify()`]
+/// Error type returned by [`Format::identify()`] and [`Cfgfifo::identify()`]
 #[derive(Clone, Debug, Eq, Error, PartialEq)]
 pub enum IdentifyError {
     /// Returned if the file path's extension did not correspond to a known &
@@ -644,7 +644,7 @@ pub enum DeserializeError {
     Yaml(#[from] serde_yaml::Error),
 }
 
-/// Error type returned by [`load()`] and [`Cfgurate::load()`]
+/// Error type returned by [`load()`] and [`Cfgfifo::load()`]
 #[derive(Debug, Error)]
 pub enum LoadError {
     /// Returned if the file format could not be identified from the file
@@ -661,7 +661,7 @@ pub enum LoadError {
     Deserialize(#[from] DeserializeError),
 }
 
-/// Error type returned by [`dump()`] and [`Cfgurate::dump()`]
+/// Error type returned by [`dump()`] and [`Cfgfifo::dump()`]
 #[derive(Debug, Error)]
 pub enum DumpError {
     /// Returned if the file format could not be identified from the file
@@ -709,7 +709,7 @@ mod tests {
             Err(IdentifyError::Unknown(ext.clone()))
         );
         assert_eq!(
-            Cfgurate::default().identify(path),
+            Cfgfifo::default().identify(path),
             Err(IdentifyError::Unknown(ext))
         );
     }
@@ -721,7 +721,7 @@ mod tests {
         let path = std::ffi::OsStr::from_bytes(b"file.js\xF6n");
         assert_eq!(Format::identify(path), Err(IdentifyError::NotUnicode));
         assert_eq!(
-            Cfgurate::default().identify(path),
+            Cfgfifo::default().identify(path),
             Err(IdentifyError::NotUnicode)
         );
     }
@@ -735,7 +735,7 @@ mod tests {
         ]);
         assert_eq!(Format::identify(&path), Err(IdentifyError::NotUnicode));
         assert_eq!(
-            Cfgurate::default().identify(path),
+            Cfgfifo::default().identify(path),
             Err(IdentifyError::NotUnicode)
         );
     }
@@ -744,7 +744,7 @@ mod tests {
     fn identify_no_ext() {
         assert_eq!(Format::identify("file"), Err(IdentifyError::NoExtension));
         assert_eq!(
-            Cfgurate::default().identify("file"),
+            Cfgfifo::default().identify("file"),
             Err(IdentifyError::NoExtension)
         );
     }
@@ -1016,7 +1016,7 @@ mod tests {
         }
     }
 
-    mod cfgurate {
+    mod cfgfifo {
         #[allow(unused_imports)]
         use super::*;
 
@@ -1029,7 +1029,7 @@ mod tests {
         ))]
         #[test]
         fn default() {
-            let cfg = Cfgurate::default();
+            let cfg = Cfgfifo::default();
             assert_eq!(cfg.identify("file.json").unwrap(), Format::Json);
             assert_eq!(cfg.identify("file.json5").unwrap(), Format::Json5);
             assert_eq!(cfg.identify("file.Ron").unwrap(), Format::Ron);
@@ -1048,7 +1048,7 @@ mod tests {
         ))]
         #[test]
         fn fallback() {
-            let cfg = Cfgurate::new().fallback(Some(Format::Json));
+            let cfg = Cfgfifo::new().fallback(Some(Format::Json));
             assert_eq!(cfg.identify("file.json").unwrap(), Format::Json);
             assert_eq!(cfg.identify("file.json5").unwrap(), Format::Json5);
             assert_eq!(cfg.identify("file.Ron").unwrap(), Format::Ron);
@@ -1061,7 +1061,7 @@ mod tests {
         #[cfg(all(feature = "json", feature = "toml"))]
         #[test]
         fn formats() {
-            let cfg = Cfgurate::new().formats([Format::Json, Format::Toml]);
+            let cfg = Cfgfifo::new().formats([Format::Json, Format::Toml]);
             assert_eq!(cfg.identify("file.json").unwrap(), Format::Json);
             assert!(cfg.identify("file.json5").is_err());
             assert!(cfg.identify("file.Ron").is_err());
@@ -1074,7 +1074,7 @@ mod tests {
         #[cfg(all(feature = "json", feature = "toml", feature = "yaml"))]
         #[test]
         fn formats_fallback() {
-            let cfg = Cfgurate::new()
+            let cfg = Cfgfifo::new()
                 .formats([Format::Json, Format::Toml])
                 .fallback(Some(Format::Yaml));
             assert_eq!(cfg.identify("file.json").unwrap(), Format::Json);

@@ -23,9 +23,9 @@ fn main() -> anyhow::Result<()> {
     let Some(cfgpath) = std::env::args().nth(1) else {
         anyhow::bail!("No configuration file specified");
     };
-    // cfgurate identifies the format used by the file `cfgpath` based on its
+    // cfgfifo identifies the format used by the file `cfgpath` based on its
     // file extension and deserializes it appropriately:
-    let cfg: AppConfig = cfgurate::load(cfgpath)?;
+    let cfg: AppConfig = cfgfifo::load(cfgpath)?;
     println!("You specified the following configuration:");
     println!("{cfg:#?}");
     Ok(())

@@ -1,11 +1,11 @@
 [package]
-name = "cfgurate"
+name = "cfgfifo"
 version = "0.1.0-dev"
 edition = "2021"
 rust-version = "1.67"
 description = "(De)serialize common configuration file formats based on file extension"
-authors = ["John Thorvald Wodder II <cfgurate@varonathe.org>"]
-repository = "https://github.com/jwodder/cfgurate"
+authors = ["John Thorvald Wodder II <cfgfifo@varonathe.org>"]
+repository = "https://github.com/jwodder/cfgfifo"
 license = "MIT"
 keywords = [
     "configuration",

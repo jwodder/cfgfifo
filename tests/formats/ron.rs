@@ -1,6 +1,6 @@
 #![cfg(feature = "ron")]
 use crate::RonConfig;
-use cfgurate::*;
+use cfgfifo::*;
 use indoc::indoc;
 use pretty_assertions::assert_eq;
 use std::io::{read_to_string, Seek, Write};

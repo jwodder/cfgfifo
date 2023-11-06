@@ -1,5 +1,5 @@
 #![cfg(feature = "ron")]
-use crate::RonConfig;
+use crate::Config;
 use cfgfifo::*;
 use indoc::indoc;
 use pretty_assertions::assert_eq;
@@ -30,7 +30,8 @@ static RON: &str = indoc! {r#"
     ),
     enums: (
         color: green,
-        msg: Response(
+        msg: (
+            type: "Response",
             id: 60069,
             value: "Foobar",
         ),
@@ -56,13 +57,13 @@ static RON: &str = indoc! {r#"
 
 #[test]
 fn load_from_str() {
-    let r = Format::Ron.load_from_str::<RonConfig>(RON);
-    assert_eq!(r.unwrap(), RonConfig::get());
+    let r = Format::Ron.load_from_str::<Config>(RON);
+    assert_eq!(r.unwrap(), Config::get());
 }
 
 #[test]
 fn dump_to_string() {
-    let r = Format::Ron.dump_to_string(&RonConfig::get());
+    let r = Format::Ron.dump_to_string(&Config::get());
     assert_eq!(r.unwrap(), RON);
 }
 
@@ -72,14 +73,14 @@ fn load_from_reader() {
     writeln!(file, "{RON}").unwrap();
     file.flush().unwrap();
     file.rewind().unwrap();
-    let r = Format::Ron.load_from_reader::<_, RonConfig>(file);
-    assert_eq!(r.unwrap(), RonConfig::get());
+    let r = Format::Ron.load_from_reader::<_, Config>(file);
+    assert_eq!(r.unwrap(), Config::get());
 }
 
 #[test]
 fn dump_to_writer() {
     let mut file = tempfile().unwrap();
-    let r = Format::Ron.dump_to_writer(&file, &RonConfig::get());
+    let r = Format::Ron.dump_to_writer(&file, &Config::get());
     assert!(r.is_ok());
     file.flush().unwrap();
     file.rewind().unwrap();
@@ -94,14 +95,14 @@ fn load_from_file() {
     writeln!(file, "{RON}").unwrap();
     file.flush().unwrap();
     file.rewind().unwrap();
-    let r = load::<RonConfig, _>(file);
-    assert_eq!(r.unwrap(), RonConfig::get());
+    let r = load::<Config, _>(file);
+    assert_eq!(r.unwrap(), Config::get());
 }
 
 #[test]
 fn dump_to_file() {
     let mut file = Builder::new().suffix(".ron").tempfile().unwrap();
-    let r = dump(&file, &RonConfig::get());
+    let r = dump(&file, &Config::get());
     assert!(r.is_ok());
     file.flush().unwrap();
     file.rewind().unwrap();

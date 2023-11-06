@@ -124,60 +124,6 @@ impl Person {
     }
 }
 
-#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
-struct RonConfig {
-    primitives: Primitives,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    missing: Option<String>,
-    enums: RonEnums,
-    people: Vec<Person>,
-}
-
-impl RonConfig {
-    #[allow(dead_code)]
-    fn get() -> RonConfig {
-        RonConfig {
-            primitives: Primitives::get(),
-            missing: None,
-            enums: RonEnums::get(),
-            people: Person::get(),
-        }
-    }
-}
-
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
-struct RonEnums {
-    color: Color,
-    msg: RonMessage,
-}
-
-impl RonEnums {
-    #[allow(dead_code)]
-    fn get() -> RonEnums {
-        RonEnums {
-            color: Color::Green,
-            msg: RonMessage::Response {
-                id: 60069,
-                value: String::from("Foobar"),
-            },
-        }
-    }
-}
-
-#[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
-// Ron doesn't support internally tagged enums
-enum RonMessage {
-    Request {
-        id: u32,
-        resource: String,
-        operation: String,
-    },
-    Response {
-        id: u32,
-        value: String,
-    },
-}
-
 #[test]
 fn load_unknown() {
     let file = Builder::new().suffix(".unk").tempfile().unwrap();

@@ -37,11 +37,12 @@
 //! feature; the features for all formats are enabled by default.  These
 //! features are:
 //!
-//! - `json` — Support for JSON via the [serde_json] crate
-//! - `json5` — Support for JSON5 via the [json5](https://docs.rs/json5) crate
-//! - `ron` — Support for RON via the [ron](https://docs.rs/ron) crate
-//! - `toml` — Support for TOML via the [toml](https://docs.rs/toml) crate
-//! - `yaml` — Support for YAML via the [serde_yaml] crate
+//! - `json` — Support for JSON via the [`serde_json`] crate
+//! - `json5` — Support for JSON5 via the [`json5`](https://docs.rs/json5)
+//!   crate
+//! - `ron` — Support for RON via the [`ron`](https://docs.rs/ron) crate
+//! - `toml` — Support for TOML via the [`toml`](https://docs.rs/toml) crate
+//! - `yaml` — Support for YAML via the [`serde_yaml`] crate
 //!
 //! Format Limitations
 //! ==================
@@ -315,7 +316,10 @@ impl Format {
                 let mut buffer = Vec::new();
                 let mut ser = serde_json::Serializer::pretty(&mut buffer);
                 serpath(value, &mut ser)?;
-                Ok(String::from_utf8(buffer).expect("serialized JSON should be valid UTF-8"))
+                let Ok(s) = String::from_utf8(buffer) else {
+                    unreachable!("serialized JSON should be valid UTF-8");
+                };
+                Ok(s)
             }
             #[cfg(feature = "json5")]
             Format::Json5 => {
@@ -323,7 +327,10 @@ impl Format {
                 let mut buffer = Vec::new();
                 let mut ser = serde_json::Serializer::pretty(&mut buffer);
                 serpath(value, &mut ser)?;
-                Ok(String::from_utf8(buffer).expect("serialized JSON should be valid UTF-8"))
+                let Ok(s) = String::from_utf8(buffer) else {
+                    unreachable!("serialized JSON should be valid UTF-8");
+                };
+                Ok(s)
             }
             #[cfg(feature = "ron")]
             Format::Ron => {
@@ -331,7 +338,10 @@ impl Format {
                 let mut ser = ron::Serializer::new(&mut buffer, Some(ron_config()))
                     .map_err(SerializeError::RonStart)?;
                 serpath(value, &mut ser)?;
-                Ok(String::from_utf8(buffer).expect("serialized RON should be valid UTF-8"))
+                let Ok(s) = String::from_utf8(buffer) else {
+                    unreachable!("serialized RON should be valid UTF-8");
+                };
+                Ok(s)
             }
             #[cfg(feature = "toml")]
             Format::Toml => {
@@ -344,7 +354,10 @@ impl Format {
             Format::Yaml => {
                 let mut buffer = Vec::new();
                 self.dump_to_writer(&mut buffer, value)?;
-                Ok(String::from_utf8(buffer).expect("serialized YAML should be valid UTF-8"))
+                let Ok(s) = String::from_utf8(buffer) else {
+                    unreachable!("serialized YAML should be valid UTF-8");
+                };
+                Ok(s)
             }
             #[allow(unreachable_patterns)]
             _ => unreachable!(),

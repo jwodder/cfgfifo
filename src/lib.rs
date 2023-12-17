@@ -38,10 +38,9 @@
 //! features are:
 //!
 //! - `json` — Support for JSON via the [`serde_json`] crate
-//! - `json5` — Support for JSON5 via the [`json5`](https://docs.rs/json5)
-//!   crate
-//! - `ron` — Support for RON via the [`ron`](https://docs.rs/ron) crate
-//! - `toml` — Support for TOML via the [`toml`](https://docs.rs/toml) crate
+//! - `json5` — Support for JSON5 via the [`json5`] crate
+//! - `ron` — Support for RON via the [`ron`] crate
+//! - `toml` — Support for TOML via the [`toml`] crate
 //! - `yaml` — Support for YAML via the [`serde_yaml`] crate
 //!
 //! Format Limitations

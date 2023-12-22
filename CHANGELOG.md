@@ -1,5 +1,8 @@
 v0.2.0 (in development)
 -----------------------
+- Files opened by the `load()` & `dump()` methods & functions are now wrapped
+  in `std::io::BufReader`/`std::io::BufWriter`
+- Added `Flush` variant to `DumpError`
 
 v0.1.0 (2023-10-30)
 -------------------

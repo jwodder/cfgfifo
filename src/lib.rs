@@ -103,7 +103,7 @@ use serde::{de::DeserializeOwned, Serialize};
 #[allow(unused_imports)]
 use serde_path_to_error::{deserialize as depath, serialize as serpath, Error as PathError};
 use std::fs::File;
-use std::io;
+use std::io::{self, Write};
 use std::path::Path;
 use strum::{Display, EnumIter, EnumString};
 use thiserror::Error;
@@ -457,7 +457,7 @@ impl Format {
     /// Returns an error if an I/O error occurs or if the underlying serializer
     /// returns an error.
     #[allow(unused_mut, unused_variables)]
-    pub fn dump_to_writer<W: io::Write, T: Serialize>(
+    pub fn dump_to_writer<W: Write, T: Serialize>(
         &self,
         mut writer: W,
         value: &T,
@@ -665,7 +665,7 @@ impl Cfgfifo {
     /// the underlying deserializer returns an error.
     pub fn load<T: DeserializeOwned, P: AsRef<Path>>(&self, path: P) -> Result<T, LoadError> {
         let fmt = self.identify(&path)?;
-        let fp = File::open(path).map_err(LoadError::Open)?;
+        let fp = io::BufReader::new(File::open(path).map_err(LoadError::Open)?);
         fmt.load_from_reader(fp).map_err(Into::into)
     }
 
@@ -679,8 +679,9 @@ impl Cfgfifo {
     /// the underlying serializer returns an error.
     pub fn dump<P: AsRef<Path>, T: Serialize>(&self, path: P, value: &T) -> Result<(), DumpError> {
         let fmt = self.identify(&path)?;
-        let fp = File::create(path).map_err(DumpError::Open)?;
-        fmt.dump_to_writer(fp, value).map_err(Into::into)
+        let mut fp = io::BufWriter::new(File::create(path).map_err(DumpError::Open)?);
+        fmt.dump_to_writer(&mut fp, value)?;
+        fp.flush().map_err(DumpError::Flush)
     }
 }
 
@@ -858,6 +859,10 @@ pub enum DumpError {
     /// Returned if serialization failed
     #[error("failed to serialize structure")]
     Serialize(#[from] SerializeError),
+
+    /// Returned if flushing the file failed after writing
+    #[error("failed to flush output file")]
+    Flush(#[source] io::Error),
 }
 
 #[cfg(feature = "ron")]

@@ -24,7 +24,7 @@ serde = "1.0.190"
 serde_json = { version = "1.0.107", optional = true }
 serde_path_to_error = "0.1.14"
 serde_yaml = { version = "0.9.27", optional = true }
-strum = { version = "0.25.0", features = ["derive"] }
+strum = { version = "0.26.1", features = ["derive"] }
 thiserror = "1.0.50"
 toml = { version = "0.8.6", optional = true }
 

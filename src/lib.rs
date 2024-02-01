@@ -116,9 +116,9 @@ use ron::ser::PrettyConfig;
 /// Each variant is only present if the corresponding Cargo feature of
 /// `cfgfifo` was enabled at compile time.
 ///
-/// A Format can be [displayed][std::fmt::Display] as a string containing its
-/// name in all-uppercase, and a Format can be [parsed][std::str::FromStr] from
-/// its name in any case.
+/// A `Format` can be [displayed][std::fmt::Display] as a string containing its
+/// name in all-uppercase, and a `Format` can be [parsed][std::str::FromStr]
+/// from its name in any case.
 #[derive(
     Clone, Copy, Debug, Display, EnumIter, EnumString, Eq, Hash, Ord, PartialEq, PartialOrd,
 )]

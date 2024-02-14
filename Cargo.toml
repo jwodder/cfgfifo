@@ -2,7 +2,7 @@
 name = "cfgfifo"
 version = "0.3.0-dev"
 edition = "2021"
-rust-version = "1.69"
+rust-version = "1.70"
 description = "(De)serialize common configuration file formats based on file extension"
 authors = ["John Thorvald Wodder II <cfgfifo@varonathe.org>"]
 repository = "https://github.com/jwodder/cfgfifo"

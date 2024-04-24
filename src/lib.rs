@@ -206,8 +206,8 @@ impl Format {
 
     /// Test whether a file extension is associated with the format
     ///
-    /// The file extension is matched case-insensitively may optionally start
-    /// with a period.
+    /// The file extension is matched case-insensitively and may optionally
+    /// start with a period.
     #[cfg_attr(feature = "json", doc = concat!(
         "# Example\n",
         "\n",

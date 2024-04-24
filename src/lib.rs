@@ -176,7 +176,9 @@ impl Format {
 
     /// Returns an array of the recognized file extensions for the file format.
     ///
-    /// File extensions are lowercase and do not start with a period.
+    /// Each returned file extension is lowercase and does not start with a
+    /// period.  The array of file extensions for a given format is sorted in
+    /// lexicographical order.
     #[cfg_attr(all(feature = "json", feature = "yaml"), doc = concat!(
         "# Example\n",
         "\n",
@@ -204,7 +206,7 @@ impl Format {
         }
     }
 
-    /// Test whether a file extension is associated with the format
+    /// Test whether a given file extension is associated with the format
     ///
     /// The file extension is matched case-insensitively and may optionally
     /// start with a period.

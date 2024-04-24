@@ -1,6 +1,7 @@
 v0.3.0 (in development)
 -----------------------
 - Increased MSRV to 1.70
+- Document that `Format::extensions()` returns results in lexicographic order
 
 v0.2.0 (2023-12-22)
 -------------------

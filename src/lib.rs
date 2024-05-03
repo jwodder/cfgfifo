@@ -126,32 +126,32 @@ use ron::ser::PrettyConfig;
 #[non_exhaustive]
 pub enum Format {
     /// The [JSON](https://www.json.org) format, (de)serialized with the
-    /// [serde_json] crate.
+    /// [`serde_json`] crate.
     ///
     /// Serialization uses multiline/"pretty" format.
     #[cfg(feature = "json")]
     #[cfg_attr(docsrs, doc(cfg(feature = "json")))]
     Json,
 
-    /// The [JSON5](https://json5.org) format, deserialized with the [json5]
+    /// The [JSON5](https://json5.org) format, deserialized with the [`json5`]
     /// crate.
     ///
-    /// Serialization uses multiline/"pretty" format, performed via serde_json,
-    /// as json5's serialization (which also uses serde_json) is
-    /// single-line/"non-pretty."
+    /// Serialization uses multiline/"pretty" format, performed via
+    /// `serde_json`, as json5's serialization (which also uses `serde_json`)
+    /// is single-line/"non-pretty."
     #[cfg(feature = "json5")]
     #[cfg_attr(docsrs, doc(cfg(feature = "json5")))]
     Json5,
 
     /// The [RON](https://github.com/ron-rs/ron) format, (de)serialized with
-    /// the [ron] crate.
+    /// the [`ron`] crate.
     ///
     /// Serialization uses multiline/"pretty" format.
     #[cfg(feature = "ron")]
     #[cfg_attr(docsrs, doc(cfg(feature = "ron")))]
     Ron,
 
-    /// The [TOML](https://toml.io) format, (de)serialized with the [toml]
+    /// The [TOML](https://toml.io) format, (de)serialized with the [`toml`]
     /// crate.
     ///
     /// Serialization uses "pretty" format, in which arrays are serialized on
@@ -161,7 +161,7 @@ pub enum Format {
     Toml,
 
     /// The [YAML](https://yaml.org) format, (de)serialized with the
-    /// [serde_yaml] crate.
+    /// [`serde_yaml`] crate.
     #[cfg(feature = "yaml")]
     #[cfg_attr(docsrs, doc(cfg(feature = "yaml")))]
     Yaml,

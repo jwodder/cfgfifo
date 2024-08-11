@@ -646,6 +646,7 @@ impl Cfgfifo {
     pub fn identify<P: AsRef<Path>>(&self, path: P) -> Result<Format, IdentifyError> {
         let ext = match (get_ext(path.as_ref()), self.fallback) {
             (Ok(ext), _) => ext,
+            #[allow(unreachable_patterns)]
             (Err(_), Some(f)) => return Ok(f),
             (Err(e), _) => return Err(e),
         };

@@ -1,3 +1,7 @@
+v0.2.2 (in development)
+-----------------------
+- Update `strum` to 0.27.0
+
 v0.2.1 (2025-01-13)
 -------------------
 - Increased MSRV to 1.70

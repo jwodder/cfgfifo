@@ -335,14 +335,11 @@ impl Format {
             }
             #[cfg(feature = "ron")]
             Format::Ron => {
-                let mut buffer = Vec::new();
+                let mut buffer = String::new();
                 let mut ser = ron::Serializer::new(&mut buffer, Some(ron_config()))
                     .map_err(SerializeError::RonStart)?;
                 serpath(value, &mut ser)?;
-                let Ok(s) = String::from_utf8(buffer) else {
-                    unreachable!("serialized RON should be valid UTF-8");
-                };
-                Ok(s)
+                Ok(buffer)
             }
             #[cfg(feature = "toml")]
             Format::Toml => {
@@ -483,10 +480,33 @@ impl Format {
             }
             #[cfg(feature = "ron")]
             Format::Ron => {
-                let mut ser = ron::Serializer::new(&mut writer, Some(ron_config()))
+                // Adapter from io::Write to fmt::Write that keeps the error
+                // <https://github.com/ron-rs/ron/issues/565>
+                struct Adapter<W: Write> {
+                    writer: W,
+                    error: io::Result<()>,
+                }
+
+                impl<T: Write> std::fmt::Write for Adapter<T> {
+                    fn write_str(&mut self, s: &str) -> std::fmt::Result {
+                        match self.writer.write_all(s.as_bytes()) {
+                            Ok(()) => Ok(()),
+                            Err(e) => {
+                                self.error = Err(e);
+                                Err(std::fmt::Error)
+                            }
+                        }
+                    }
+                }
+
+                let mut adapter = Adapter {
+                    writer,
+                    error: Ok(()),
+                };
+                let mut ser = ron::Serializer::new(&mut adapter, Some(ron_config()))
                     .map_err(SerializeError::RonStart)?;
                 serpath(value, &mut ser)?;
-                writer.write_all(b"\n")?;
+                adapter.writer.write_all(b"\n")?;
                 Ok(())
             }
             #[cfg(feature = "toml")]

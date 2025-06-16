@@ -1,7 +1,7 @@
 [![Project Status: Active – The project has reached a stable, usable state and is being actively developed.](https://www.repostatus.org/badges/latest/active.svg)](https://www.repostatus.org/#active)
 [![CI Status](https://github.com/jwodder/cfgfifo/actions/workflows/test.yml/badge.svg)](https://github.com/jwodder/cfgfifo/actions/workflows/test.yml)
 [![codecov.io](https://codecov.io/gh/jwodder/cfgfifo/branch/master/graph/badge.svg)](https://codecov.io/gh/jwodder/cfgfifo)
-[![Minimum Supported Rust Version](https://img.shields.io/badge/MSRV-1.70-orange)](https://www.rust-lang.org)
+[![Minimum Supported Rust Version](https://img.shields.io/badge/MSRV-1.80-orange)](https://www.rust-lang.org)
 [![MIT License](https://img.shields.io/github/license/jwodder/cfgfifo.svg)](https://opensource.org/licenses/MIT)
 
 [GitHub](https://github.com/jwodder/cfgfifo) | [crates.io](https://crates.io/crates/cfgfifo) | [Documentation](https://docs.rs/cfgfifo) | [Issues](https://github.com/jwodder/cfgfifo/issues) | [Changelog](https://github.com/jwodder/cfgfifo/blob/master/CHANGELOG.md)

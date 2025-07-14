@@ -343,10 +343,10 @@ impl Format {
             }
             #[cfg(feature = "toml")]
             Format::Toml => {
-                let mut s = String::new();
-                let ser = toml::Serializer::pretty(&mut s);
+                let mut buff = toml::ser::Buffer::new();
+                let ser = toml::Serializer::pretty(&mut buff);
                 serpath(value, ser)?;
-                Ok(s)
+                Ok(buff.to_string())
             }
             #[cfg(feature = "yaml")]
             Format::Yaml => {
@@ -432,7 +432,7 @@ impl Format {
             }
             #[cfg(feature = "toml")]
             Format::Toml => {
-                let de = toml::Deserializer::new(s);
+                let de = toml::Deserializer::parse(s).map_err(DeserializeError::TomlParse)?;
                 depath(de).map_err(Into::into)
             }
             #[cfg(feature = "yaml")]
@@ -836,6 +836,13 @@ pub enum DeserializeError {
     #[cfg_attr(docsrs, doc(cfg(feature = "ron")))]
     #[error(transparent)]
     RonEnd(ron::error::SpannedError),
+
+    /// Returned if TOML deserialization failed due to an error initializing
+    /// the deserializer
+    #[cfg(feature = "toml")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "toml")))]
+    #[error(transparent)]
+    TomlParse(toml::de::Error),
 
     /// Returned if TOML deserialization failed
     #[cfg(feature = "toml")]

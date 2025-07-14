@@ -1,6 +1,7 @@
 v0.4.0 (in development)
 -----------------------
 - Increased MSRV to 1.80
+- Update `toml` to 0.9.0
 
 v0.3.0 (2025-04-14)
 -------------------

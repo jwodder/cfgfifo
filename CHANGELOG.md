@@ -1,5 +1,5 @@
-v0.5.0 (in development)
------------------------
+v0.5.0 (2025-08-29)
+-------------------
 - Update `ron` to 0.11.0
 - The payload of the `Ron` variant of `DeserializeError` is now wrapped in a
   `Box`

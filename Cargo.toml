@@ -1,6 +1,6 @@
 [package]
 name = "cfgfifo"
-version = "0.5.0-dev"
+version = "0.5.0"
 edition = "2021"
 rust-version = "1.80"
 description = "(De)serialize common configuration file formats based on file extension"

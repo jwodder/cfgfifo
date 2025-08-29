@@ -423,7 +423,7 @@ impl Format {
                         let path = e.path().clone();
                         let inner = e.into_inner();
                         let ron_e = de.span_error(inner);
-                        return Err(DeserializeError::Ron(PathError::new(path, ron_e)));
+                        return Err(PathError::new(path, ron_e).into());
                     }
                 };
                 de.end()
@@ -829,7 +829,7 @@ pub enum DeserializeError {
     #[cfg(feature = "ron")]
     #[cfg_attr(docsrs, doc(cfg(feature = "ron")))]
     #[error(transparent)]
-    Ron(#[from] PathError<ron::error::SpannedError>),
+    Ron(Box<PathError<ron::error::SpannedError>>),
 
     /// Returned if RON input had invalid trailing characters
     #[cfg(feature = "ron")]
@@ -855,6 +855,14 @@ pub enum DeserializeError {
     #[cfg_attr(docsrs, doc(cfg(feature = "yaml")))]
     #[error(transparent)]
     Yaml(#[from] PathError<serde_yaml::Error>),
+}
+
+#[cfg(feature = "ron")]
+#[cfg_attr(docsrs, doc(cfg(feature = "ron")))]
+impl From<PathError<ron::error::SpannedError>> for DeserializeError {
+    fn from(e: PathError<ron::error::SpannedError>) -> DeserializeError {
+        DeserializeError::Ron(Box::new(e))
+    }
 }
 
 /// Error type returned by [`load()`] and [`Cfgfifo::load()`]

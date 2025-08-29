@@ -1,3 +1,9 @@
+v0.5.0 (in development)
+-----------------------
+- Update `ron` to 0.11.0
+- The payload of the `Ron` variant of `DeserializeError` is now wrapped in a
+  `Box`
+
 v0.4.0 (2025-07-14)
 -------------------
 - Increased MSRV to 1.80

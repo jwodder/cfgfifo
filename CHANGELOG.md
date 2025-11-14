@@ -1,3 +1,8 @@
+v0.6.0 (in development)
+-----------------------
+- Update `ron` to 0.12.0
+- Increased MSRV to 1.82
+
 v0.5.0 (2025-08-29)
 -------------------
 - Update `ron` to 0.11.0

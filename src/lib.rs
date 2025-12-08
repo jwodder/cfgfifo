@@ -99,9 +99,9 @@
 //! }
 //! ```
 
-use serde::{de::DeserializeOwned, Serialize};
+use serde::{Serialize, de::DeserializeOwned};
 #[allow(unused_imports)]
-use serde_path_to_error::{deserialize as depath, serialize as serpath, Error as PathError};
+use serde_path_to_error::{Error as PathError, deserialize as depath, serialize as serpath};
 use std::fs::File;
 use std::io::{self, Write};
 use std::path::Path;

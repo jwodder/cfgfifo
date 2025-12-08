@@ -3,8 +3,8 @@ use crate::Config;
 use cfgfifo::*;
 use indoc::indoc;
 use pretty_assertions::assert_eq;
-use std::io::{read_to_string, Seek, Write};
-use tempfile::{tempfile, Builder};
+use std::io::{Seek, Write, read_to_string};
+use tempfile::{Builder, tempfile};
 
 static JSON: &str = indoc! {r#"
 {

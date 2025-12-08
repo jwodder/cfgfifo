@@ -42,7 +42,9 @@ impl Primitives {
             integer: 42,
             float: 1.618,
             boolean: true,
-            text: String::from("This is test text.\nThis is a new line.\n\tThis is an indented line.\nThis is a snowman with a goat: \u{2603}\u{1F410}."),
+            text: String::from(
+                "This is test text.\nThis is a new line.\n\tThis is an indented line.\nThis is a snowman with a goat: \u{2603}\u{1F410}.",
+            ),
             none: None,
             some: Some(17),
             list: vec![1, 2, 6, 15, 36],

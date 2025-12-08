@@ -1,5 +1,5 @@
-v0.7.0 (in development)
------------------------
+v0.7.0 (2025-12-08)
+-------------------
 - Increased MSRV to 1.88
 - Moved example program to a workspace crate and removed "examples" feature
 - Updated `json5` to 1.0.0

@@ -10,7 +10,7 @@ license = "MIT"
 
 [package]
 name = "cfgfifo"
-version = "0.7.0-dev"
+version = "0.7.0"
 edition.workspace = true
 rust-version.workspace = true
 description = "(De)serialize common configuration file formats based on file extension"

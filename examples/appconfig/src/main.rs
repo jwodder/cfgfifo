@@ -1,4 +1,3 @@
-// Run with `cargo run --example appconfig --features examples -- <cfgfile>`
 use serde::Deserialize;
 
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq)]

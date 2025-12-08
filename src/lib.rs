@@ -410,8 +410,7 @@ impl Format {
             }
             #[cfg(feature = "json5")]
             Format::Json5 => {
-                let mut de =
-                    json5::Deserializer::from_str(s).map_err(DeserializeError::Json5Syntax)?;
+                let mut de = json5::Deserializer::from_str(s);
                 depath(&mut de).map_err(Into::into)
             }
             #[cfg(feature = "ron")]
@@ -805,13 +804,6 @@ pub enum DeserializeError {
     #[cfg_attr(docsrs, doc(cfg(feature = "json")))]
     #[error(transparent)]
     JsonEnd(serde_json::Error),
-
-    /// Returned if JSON5 deserialization failed due to the input having
-    /// invalid syntax
-    #[cfg(feature = "json5")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "json5")))]
-    #[error(transparent)]
-    Json5Syntax(json5::Error),
 
     /// Returned if JSON5 deserialization failed
     #[cfg(feature = "json5")]

@@ -1,12 +1,23 @@
-[package]
-name = "cfgfifo"
-version = "0.7.0-dev"
+[workspace]
+members = ["examples/*"]
+resolver = "2"
+
+[workspace.package]
 edition = "2021"
 rust-version = "1.83"
-description = "(De)serialize common configuration file formats based on file extension"
 authors = ["John Thorvald Wodder II <cfgfifo@varonathe.org>"]
 repository = "https://github.com/jwodder/cfgfifo"
 license = "MIT"
+
+[package]
+name = "cfgfifo"
+version = "0.7.0-dev"
+edition.workspace = true
+rust-version.workspace = true
+description = "(De)serialize common configuration file formats based on file extension"
+authors.workspace = true
+repository.workspace = true
+license.workspace = true
 keywords = [
     "configuration",
     "data-serialization",
@@ -17,7 +28,6 @@ categories = ["config", "encoding", "filesystem"]
 exclude = ["/.*"]
 
 [dependencies]
-anyhow = { version = "1.0.75", optional = true }
 json5 = { version = "0.4.1", optional = true }
 ron = { version = "0.12.0", optional = true }
 serde = "1.0.190"
@@ -37,22 +47,20 @@ tempfile = "3.8.1"
 
 [features]
 default = ["json", "json5", "ron", "toml", "yaml"]
-examples = ["dep:anyhow", "serde/derive"]
 json = ["dep:serde_json"]
 json5 = ["dep:json5", "dep:serde_json"]
 ron = ["dep:ron"]
 toml = ["dep:toml"]
 yaml = ["dep:serde_yaml"]
 
-[[example]]
-name = "appconfig"
-required-features = ["examples"]
-
 [package.metadata.docs.rs]
 all-features = true
 rustdoc-args = ["--cfg", "docsrs"]
 
-[lints.rust]
+[lints]
+workspace = true
+
+[workspace.lints.rust]
 # Lint groups:
 deprecated_safe = { level = "deny", priority = -1 }
 future_incompatible = { level = "deny", priority = -1 }
@@ -126,7 +134,7 @@ unused_associated_type_bounds = "deny"
 unused_comparisons = "deny"
 while_true = "deny"
 
-[lints.rustdoc]
+[workspace.lints.rustdoc]
 bare_urls = "deny"
 broken_intra_doc_links = "deny"
 invalid_codeblock_attributes = "deny"
@@ -136,7 +144,7 @@ private_intra_doc_links = "deny"
 redundant_explicit_links = "deny"
 unescaped_backticks = "deny"
 
-[lints.clippy]
+[workspace.lints.clippy]
 # Deny all warn-by-default lints:
 all = { level = "deny", priority = -1 }
 

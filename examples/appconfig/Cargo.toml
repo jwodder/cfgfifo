@@ -1,0 +1,18 @@
+[package]
+name = "appconfig"
+version = "0.0.0"
+edition.workspace = true
+rust-version.workspace = true
+description = "An example of using cfgfifo"
+authors.workspace = true
+repository.workspace = true
+license.workspace = true
+publish = false
+
+[dependencies]
+anyhow = "1.0.75"
+cfgfifo = { path = "../.." }
+serde = { version = "1.0.190", features = ["derive"] }
+
+[lints]
+workspace = true

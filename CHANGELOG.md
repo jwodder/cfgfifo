@@ -1,6 +1,6 @@
 v0.7.0 (in development)
 -----------------------
-- Increased MSRV to 1.83
+- Increased MSRV to 1.88
 - Moved example program to a workspace crate and removed "examples" feature
 - Updated `json5` to 1.0.0
 - Removed `Json5Syntax` variant of `DeserializeError`

@@ -12,7 +12,7 @@ publish = false
 [dependencies]
 anyhow = "1.0.75"
 cfgfifo = { path = "../.." }
-serde = { version = "1.0.190", features = ["derive"] }
+serde = { version = "1.0.225", features = ["derive"] }
 
 [lints]
 workspace = true

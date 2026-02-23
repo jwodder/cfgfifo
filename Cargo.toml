@@ -33,7 +33,7 @@ serde = "1.0.225"
 serde_json = { version = "1.0.107", optional = true }
 serde_path_to_error = "0.1.14"
 serde_yaml = { version = "0.9.27", optional = true }
-strum = { version = "0.27.0", features = ["derive"] }
+strum = { version = "0.28.0", features = ["derive"] }
 thiserror = "2.0.0"
 toml = { version = "1.0.0", optional = true }
 

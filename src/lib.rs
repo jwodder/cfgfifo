@@ -105,7 +105,7 @@ use serde_path_to_error::{Error as PathError, deserialize as depath, serialize a
 use std::fs::File;
 use std::io::{self, Write};
 use std::path::Path;
-use strum::{Display, EnumIter, EnumString};
+use strum::{Display, EnumIter};
 use thiserror::Error;
 
 #[cfg(feature = "ron")]
@@ -119,10 +119,27 @@ use ron::ser::PrettyConfig;
 /// A `Format` can be [displayed][std::fmt::Display] as a string containing its
 /// name in all-uppercase, and a `Format` can be [parsed][std::str::FromStr]
 /// from its name in any case.
-#[derive(
-    Clone, Copy, Debug, Display, EnumIter, EnumString, Eq, Hash, Ord, PartialEq, PartialOrd,
+#[derive(Clone, Copy, Debug, Display, EnumIter, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[cfg_attr(
+    any(
+        feature = "json",
+        feature = "json5",
+        feature = "ron",
+        feature = "toml",
+        feature = "yaml"
+    ),
+    derive(strum::EnumString)
 )]
-#[strum(ascii_case_insensitive, serialize_all = "UPPERCASE")]
+#[cfg_attr(
+    any(
+        feature = "json",
+        feature = "json5",
+        feature = "ron",
+        feature = "toml",
+        feature = "yaml"
+    ),
+    strum(ascii_case_insensitive, serialize_all = "UPPERCASE")
+)]
 #[non_exhaustive]
 pub enum Format {
     /// The [JSON](https://www.json.org) format, (de)serialized with the

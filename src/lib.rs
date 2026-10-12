@@ -41,7 +41,7 @@
 //! - `json5` — Support for JSON5 via the [`json5`] crate
 //! - `ron` — Support for RON via the [`ron`] crate
 //! - `toml` — Support for TOML via the [`toml`] crate
-//! - `yaml` — Support for YAML via the [`serde_yaml`] crate
+//! - `yaml` — Support for YAML via the [`noyalib`] crate
 //!
 //! Format Limitations
 //! ==================
@@ -58,9 +58,6 @@
 //!
 //! - TOML does not support the unit tuple `()`, unit (fieldless) structs, maps
 //!   with non-string keys, or top-level types that do not serialize to tables.
-//!
-//! - YAML does not support bytes or nested enums (e.g.,
-//!   `Enum::Variant(AnotherEnum)`, where `AnotherEnum` is "fat").
 //!
 //! Example
 //! =======
@@ -178,7 +175,7 @@ pub enum Format {
     Toml,
 
     /// The [YAML](https://yaml.org) format, (de)serialized with the
-    /// [`serde_yaml`] crate.
+    /// [`noyalib`] crate.
     #[cfg(feature = "yaml")]
     #[cfg_attr(docsrs, doc(cfg(feature = "yaml")))]
     Yaml,
@@ -367,11 +364,8 @@ impl Format {
             }
             #[cfg(feature = "yaml")]
             Format::Yaml => {
-                let mut buffer = Vec::new();
-                self.dump_to_writer(&mut buffer, value)?;
-                let Ok(s) = String::from_utf8(buffer) else {
-                    unreachable!("serialized YAML should be valid UTF-8");
-                };
+                let mut s = noyalib::to_string(&value)?;
+                s.push('\n');
                 Ok(s)
             }
             #[allow(unreachable_patterns)]
@@ -452,10 +446,7 @@ impl Format {
                 depath(de).map_err(Into::into)
             }
             #[cfg(feature = "yaml")]
-            Format::Yaml => {
-                let de = serde_yaml::Deserializer::from_str(s);
-                depath(de).map_err(Into::into)
-            }
+            Format::Yaml => noyalib::from_str_borrowing(s).map_err(Into::into),
             #[allow(unreachable_patterns)]
             _ => unreachable!(),
         }
@@ -533,8 +524,9 @@ impl Format {
             }
             #[cfg(feature = "yaml")]
             Format::Yaml => {
-                let mut ser = serde_yaml::Serializer::new(writer);
-                serpath(value, &mut ser).map_err(Into::into)
+                noyalib::to_writer(&mut writer, &value)?;
+                writer.write_all(b"\n")?;
+                Ok(())
             }
             #[allow(unreachable_patterns)]
             _ => unreachable!(),
@@ -577,8 +569,8 @@ impl Format {
             }
             #[cfg(feature = "yaml")]
             Format::Yaml => {
-                let de = serde_yaml::Deserializer::from_reader(reader);
-                depath(de).map_err(Into::into)
+                let s = io::read_to_string(reader)?;
+                self.load_from_str(&s)
             }
             #[allow(unreachable_patterns)]
             _ => unreachable!(),
@@ -792,7 +784,7 @@ pub enum SerializeError {
     #[cfg(feature = "yaml")]
     #[cfg_attr(docsrs, doc(cfg(feature = "yaml")))]
     #[error(transparent)]
-    Yaml(#[from] PathError<serde_yaml::Error>),
+    Yaml(#[from] noyalib::Error),
 }
 
 /// Error type returned by [`Format::load_from_str()`] and
@@ -863,7 +855,7 @@ pub enum DeserializeError {
     #[cfg(feature = "yaml")]
     #[cfg_attr(docsrs, doc(cfg(feature = "yaml")))]
     #[error(transparent)]
-    Yaml(#[from] PathError<serde_yaml::Error>),
+    Yaml(#[from] noyalib::Error),
 }
 
 #[cfg(feature = "ron")]

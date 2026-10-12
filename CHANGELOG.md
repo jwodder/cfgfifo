@@ -1,3 +1,7 @@
+v0.9.0 (in development)
+-----------------------
+- Change YAML backend from `serde_yaml` to `noyalib`
+
 v0.8.0 (2026-02-16)
 -------------------
 - Updated `toml` to 1.0.0

@@ -1,5 +1,5 @@
-v0.9.0 (in development)
------------------------
+v0.9.0 (2026-10-12)
+-------------------
 - Change YAML backend from `serde_yaml` to `noyalib`
 
 v0.8.0 (2026-02-16)
